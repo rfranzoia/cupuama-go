@@ -151,19 +151,51 @@ func TestUpdateOrder(t *testing.T) {
 
 	order, err := ois.Create(testOIS)
 	if err != nil {
-		t.Errorf("error while creating an order %v", err)
+		t.Errorf("(TestUpdateOrder) error creating an order %v", err)
 	}
 
 	err = ois.UpdateOrder(order.Order.ID, oi)
 	if err != nil {
-		t.Errorf("error while updating order %v", err)
+		t.Errorf("(TestUpdateOrder) error updating order %v", err)
 	}
 
 	order, err = ois.Get(order.Order.ID)
 	if err != nil {
-		t.Errorf("updated order retrieved has failed %v", err)
+		t.Errorf("(TestUpdateOrder) after update order.Get() has failed %v", err)
 
 	} else if len(order.OrderItems) != 1 {
-		t.Errorf("update order fail %v", err)
+		t.Errorf("(TestUpdateOrder) update order fail %v", err)
+	}
+}
+
+func TestDeleteItemFromOrder(t *testing.T) {
+
+	orderItem := OrderItems{
+		Product: products.Products{
+			ID: 3,
+		},
+		Fruit: fruits.Fruits{
+			ID: 5,
+		},
+		Quantity:  10,
+		UnitPrice: 7.5,
+	}
+
+	order, err := ois.Create(testOIS)
+	if err != nil {
+		t.Errorf("(TestDeleteItemFromOrder) error creating an order %v", err)
+	}
+
+	err = ois.DeleteOrderItems(order.Order.ID, orderItem)
+	if err != nil {
+		t.Errorf("(TestDeleteItemFromOrder) error removing order item(s) %v", err)
+	}
+
+	order, err = ois.Get(order.Order.ID)
+	if err != nil {
+		t.Errorf("(TestDeleteItemFromOrder) after delete OrderItem order.Get() has failed %v", err)
+
+	} else if len(order.OrderItems) != 1 {
+		t.Errorf("(TestDeleteItemFromOrder) delete order item has failed %v", err)
 	}
 }

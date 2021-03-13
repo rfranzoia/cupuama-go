@@ -328,28 +328,46 @@ func (*OrderItemsStatus) CreateOrderStatus(os OrderStatus, tx *sql.Tx) error {
 }
 
 // DeleteOrderItems remove Items from an order
-func (*OrderItemsStatus) DeleteOrderItems(orderID int64, oi []OrderItems) error {
+func (ois *OrderItemsStatus) DeleteOrderItems(orderID int64, oi ...OrderItems) error {
+
+	if len(oi) == 0 {
+		log.Println("(DeleteOrderItems:NoItemsToDelete)", oi)
+		return nil
+	}
 
 	var err error
 
 	ctx := context.Background()
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		log.Println("(CreateOrderStatus:CreateTransaction)", err)
+		log.Println("(DeleteOrderItems:CreateTransaction)", err)
 		return err
 	}
 
-	orderExist := orderExists(orderID)
-	if !orderExist {
+	order, err := ois.Get(orderID)
+	if err != nil {
 		err := fmt.Errorf("order %d doesn't exist", orderID)
-		log.Println("(CreateOrderStatus:GetOrder)", err)
-		tx.Rollback()
+		log.Println("(DeleteOrderItems:GetOrder)", err)
 		return err
 	}
 
-	// delete the selected items
+	// delete the selected items if the item exists in the order
 	for _, item := range oi {
-		fmt.Println("deleting", item)
+		for _, orderItem := range order.OrderItems {
+			if orderItem.Product.ID == item.Product.ID && orderItem.Fruit.ID == item.Fruit.ID {
+				query := app.SQLCache["orders_orderItems_deleteOne.sql"]
+				stmt, err := tx.Prepare(query)
+				if err != nil {
+					log.Println("(DeleteOrderItems:deleteItem:Prepare)", err)
+					return err
+				}
+				_, err = stmt.Exec(&orderID, &item.Product.ID, &item.Fruit.ID)
+				if err != nil {
+					log.Println("(DeleteOrderItems:deleteItem:Exec)", err)
+					return err
+				}
+			}
+		}
 	}
 
 	err = tx.Commit()
