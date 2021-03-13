@@ -125,7 +125,6 @@ func Update(c echo.Context) error {
 
 	user.Login = login
 	u, err := model.Update(user)
-
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error modifying user data",

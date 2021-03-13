@@ -82,8 +82,7 @@ func (*Users) List() ([]Users, error) {
 		list = append(list, user)
 	}
 
-	err = rows.Err()
-	if err != nil {
+	if err = rows.Err(); err != nil {
 		log.Println("(ListUser:Rows)", err)
 		return nil, err
 	}
