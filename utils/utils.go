@@ -77,7 +77,36 @@ func CreateSQLCache() (map[string]string, error) {
 
 	queries, err := filepath.Glob("./queries/*.sql")
 	if err != nil {
-		return myCache, err
+		log.Fatal("cannot read queries", err)
+
+	} else if len(queries) == 0 {
+		log.Fatal("no queries were found")
+	}
+
+	for _, query := range queries {
+		name := filepath.Base(query)
+		sql, err := ioutil.ReadFile(query)
+		if err != nil {
+			log.Println(err)
+			return myCache, err
+		}
+		myCache[name] = string(sql)
+	}
+
+	return myCache, nil
+}
+
+// CreateSQLCacheForTests creates a map of queries to be used by the repository
+func CreateSQLCacheForTests() (map[string]string, error) {
+
+	myCache := map[string]string{}
+
+	queries, err := filepath.Glob("../queries/*.sql")
+	if err != nil {
+		log.Fatal("cannot read queries", err)
+
+	} else if len(queries) == 0 {
+		log.Fatal("no queries were found")
 	}
 
 	for _, query := range queries {

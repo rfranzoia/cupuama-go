@@ -94,6 +94,26 @@ func (*OrderItemsStatus) List(orderID int64) ([]OrderItemsStatus, error) {
 
 }
 
+// Get retrieves an order
+func (ois *OrderItemsStatus) Get(orderID int64) (OrderItemsStatus, error) {
+
+	if orderID <= 0 {
+		err := errors.New("cannot retrieve an order with a negative ID")
+		return OrderItemsStatus{}, err
+	}
+
+	orders, err := ois.List(orderID)
+	if err != nil {
+		return OrderItemsStatus{}, err
+
+	} else if len(orders) == 0 {
+		err := errors.New("couldn't find an order with the specified ID")
+		return OrderItemsStatus{}, err
+	}
+
+	return orders[0], nil
+}
+
 // Create creates a new Order with Items and Status
 func (*OrderItemsStatus) Create(ois OrderItemsStatus) (OrderItemsStatus, error) {
 
@@ -239,7 +259,13 @@ func (*OrderItemsStatus) CreateOrderStatus(os OrderStatus, tx *sql.Tx) error {
 		}
 	}
 
-	if os.Status > 0 {
+	if os.Status < 0 {
+		err := fmt.Errorf("cannot create negative status")
+		log.Println("(CreateOrderStatus:checkNegative)", err)
+		tx.Rollback()
+		return err
+
+	} else if os.Status > 0 {
 		query := app.SQLCache["orders_list_max_status.sql"]
 		stmt, err := tx.Prepare(query)
 		if err != nil {
@@ -257,9 +283,15 @@ func (*OrderItemsStatus) CreateOrderStatus(os OrderStatus, tx *sql.Tx) error {
 		}
 
 		// prevents the creation of a status that's not valid
-		if latestStatus > os.Status || os.Status < 0 {
+		if latestStatus > os.Status {
 			err = errors.New("cannot set order to previous status")
-			log.Println("(CreateOrderStatus:validation)", err)
+			log.Println("(CreateOrderStatus:validationPrevious)", err)
+			tx.Rollback()
+			return err
+
+		} else if os.Status != 9 && os.Status != (latestStatus+1) {
+			err = errors.New(fmt.Sprintf("status order is not correct: got %d and should be %d", os.Status, (latestStatus + 1)))
+			log.Println("(CreateOrderStatus:validationNext)", err)
 			tx.Rollback()
 			return err
 		}

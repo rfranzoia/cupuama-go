@@ -20,11 +20,11 @@ func List() []OrderItemsStatus {
 
 // Get retrive an order by its ID
 func Get(orderID int64) OrderItemsStatus {
-	list, err := model.List(orderID)
+	order, err := model.Get(orderID)
 	if err != nil {
 		return OrderItemsStatus{}
 	}
-	return list[0]
+	return order
 }
 
 // Create creates an order
