@@ -1,8 +1,8 @@
 package orders
 
 import (
-	"github.com/rfranzoia/cupuama-go/fruits"
-	"github.com/rfranzoia/cupuama-go/products"
+	"github.com/rfranzoia/cupuama-go/api/fruits"
+	"github.com/rfranzoia/cupuama-go/api/products"
 )
 
 // OrderItems table definition

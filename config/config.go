@@ -1,6 +1,8 @@
 package config
 
-import "log"
+import (
+	"log"
+)
 
 // AppConfig holds the application config
 type AppConfig struct {

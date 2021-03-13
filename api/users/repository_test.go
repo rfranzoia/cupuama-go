@@ -18,7 +18,7 @@ func init() {
 	var app config.AppConfig
 
 	// loads all queries into the application config cache
-	qc, err := utils.CreateSQLCache("../queries/*.sql")
+	qc, err := utils.CreateSQLCache("../../queries/*.sql")
 	if err != nil {
 		log.Fatal("cannot create queries cache")
 	}
@@ -26,7 +26,7 @@ func init() {
 	app.SQLCache = qc
 	app.UseCache = false
 
-	NewUsersAPI(&app)
+	NewAPI(&app)
 
 	testUser = Users{
 		Login:    generateRandomLogin(),
@@ -46,7 +46,7 @@ func generateRandomLogin() string {
 }
 
 func TestCreate(t *testing.T) {
-	err := testUser.Create(testUser)
+	err := testUser.Create(&testUser)
 	if err != nil {
 		t.Errorf("(TestCreate) cannot create user: %v", err)
 	}
@@ -54,7 +54,7 @@ func TestCreate(t *testing.T) {
 
 func TestGet(t *testing.T) {
 	login := testUser.Login
-	err := testUser.Create(testUser)
+	err := testUser.Create(&testUser)
 	if err != nil {
 		t.Errorf("(TestGet) cannot create user: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestList(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	login := testUser.Login
-	err := testUser.Create(testUser)
+	err := testUser.Create(&testUser)
 	if err != nil {
 		t.Errorf("(TestDelete) cannot create user: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestDelete(t *testing.T) {
 func TestUpdate(t *testing.T) {
 
 	login := testUser.Login
-	err := testUser.Create(testUser)
+	err := testUser.Create(&testUser)
 	if err != nil {
 		t.Errorf("(TestUpdate) cannot create user: %v", err)
 	}
@@ -104,7 +104,7 @@ func TestUpdate(t *testing.T) {
 
 	u.Person.DateOfBirth = "1975-03-22"
 
-	u, err = testUser.Update(u)
+	u, err = testUser.Update(&u)
 	if err != nil {
 		t.Errorf("(TestUpdate) error updating user: %v", err)
 	}

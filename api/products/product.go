@@ -1,6 +1,6 @@
 package products
 
-import "github.com/rfranzoia/cupuama-go/users"
+import "github.com/rfranzoia/cupuama-go/api/users"
 
 // Products definition for products tables
 type Products struct {

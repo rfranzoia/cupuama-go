@@ -1,6 +1,6 @@
 package fruits
 
-import "github.com/rfranzoia/cupuama-go/users"
+import "github.com/rfranzoia/cupuama-go/api/users"
 
 // Fruits definition for fruits tables
 type Fruits struct {

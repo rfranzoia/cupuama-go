@@ -4,9 +4,9 @@ import (
 	"log"
 	"testing"
 
+	"github.com/rfranzoia/cupuama-go/api/fruits"
+	"github.com/rfranzoia/cupuama-go/api/products"
 	"github.com/rfranzoia/cupuama-go/config"
-	"github.com/rfranzoia/cupuama-go/fruits"
-	"github.com/rfranzoia/cupuama-go/products"
 	"github.com/rfranzoia/cupuama-go/utils"
 )
 

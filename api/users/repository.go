@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/rfranzoia/cupuama-go/database"
+	"github.com/rfranzoia/cupuama-go/utils"
 )
 
 var db = database.GetConnection()
@@ -91,7 +92,7 @@ func (*Users) List() ([]Users, error) {
 }
 
 // Create inserts a new user into the database
-func (*Users) Create(user Users) error {
+func (*Users) Create(user *Users) error {
 
 	stmt, err := db.Prepare(
 		"insert into users (login, password, first_name, last_name, date_of_birth) " +
@@ -104,7 +105,7 @@ func (*Users) Create(user Users) error {
 
 	defer stmt.Close()
 
-	_, err = stmt.Exec(user.Login, user.Password, user.Person.FirstName, user.Person.LastName, user.Person.DateOfBirth)
+	_, err = stmt.Exec(user.Login, utils.GetMD5Hash(user.Password), user.Person.FirstName, user.Person.LastName, user.Person.DateOfBirth)
 
 	if err != nil {
 		log.Println("(CreateUser:Exec)", err)
@@ -161,8 +162,8 @@ func (*Users) Delete(login string) error {
 
 }
 
-// Update modify the data for the specified user
-func (*Users) Update(user Users) (Users, error) {
+// Update modify the data (except password) for the specified user
+func (*Users) Update(user *Users) (Users, error) {
 
 	_, err := model.Get(user.Login)
 	if err != nil {
@@ -192,6 +193,6 @@ func (*Users) Update(user Users) (Users, error) {
 		return Users{}, err
 	}
 
-	return user, nil
-	// TODo: implement update password
+	return *user, nil
+	// TODO: implement update password
 }
