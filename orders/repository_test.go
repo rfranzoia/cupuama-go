@@ -199,3 +199,10 @@ func TestDeleteItemFromOrder(t *testing.T) {
 		t.Errorf("(TestDeleteItemFromOrder) delete order item has failed %v", err)
 	}
 }
+
+func TestCancelOrderCreated(t *testing.T) {
+	err := ois.CancelOrder(33)
+	if err != nil {
+		t.Errorf("(TestCancelOrderCreated) cancel has failed: %v", err)
+	}
+}

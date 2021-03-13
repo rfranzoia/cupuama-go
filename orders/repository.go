@@ -430,6 +430,74 @@ func (ois *OrderItemsStatus) UpdateOrder(orderID int64, oi []OrderItems) error {
 	return nil
 }
 
+// CancelOrder change status of an order to Canceled
+func (ois *OrderItemsStatus) CancelOrder(orderID int64) error {
+
+	ctx := context.Background()
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		log.Println("(UpdateOrder:CreateTransaction)", err)
+		return err
+	}
+
+	if !orderExists(orderID) {
+		err := errors.New("order doesn't exists")
+		log.Println("(CancelOrder:OrderNotFount)")
+		return err
+	}
+
+	order, err := ois.Get(orderID)
+	if err != nil {
+		log.Println("(CancelOrder:GetOrder)", err)
+		return err
+	}
+
+	if order.OrderStatus.Status.Value == OrderCanceled.Value {
+		err := errors.New("order is already canceled")
+		log.Println("(CancelOrder:OrderCanceledAlready)")
+		return err
+
+	} else if order.OrderStatus.Status.Value > OrderReadyForDelivery.Value {
+		err := errors.New("cannot cancel orders that haven been dispatched or delivered")
+		log.Println("(CancelOrder:OrderDispatchedOrDelivered)")
+		return err
+
+	} else if order.OrderStatus.Status.Value < OrderInPreparation.Value {
+		// delete all items from an order
+		query := app.SQLCache["orders_orderItems_deleteAll.sql"]
+		stmt, err := tx.Prepare(query)
+		if err != nil {
+			log.Println("(CancelOrder:deleteAll:Prepare)", err)
+			return err
+		}
+
+		_, err = stmt.Exec(&orderID)
+		if err != nil {
+			log.Println("(CancelOrder:deleteAll:exec)", err)
+			return err
+		}
+	}
+
+	os := OrderStatus{
+		Order:  order.Order,
+		Status: OrderCanceled,
+	}
+
+	err = ois.CreateOrderStatus(os, tx)
+	if err != nil {
+		log.Println("(CancelOrder:CreateCancelStatus)", err)
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Println("(CancelOrder:Commit)", err)
+		return err
+	}
+
+	return nil
+}
+
 func orderHasStatus(orderID int64, status OrderStatusType) bool {
 	query := app.SQLCache["orders_list_max_status.sql"]
 	stmt, err := db.Prepare(query)
