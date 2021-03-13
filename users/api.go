@@ -1,5 +1,14 @@
 package users
 
+import "github.com/rfranzoia/cupuama-go/config"
+
+var app *config.AppConfig
+
+// NewOrderAPI setups the configuration for orders
+func NewUsersAPI(a *config.AppConfig) {
+	app = a
+}
+
 // List retrieves all users
 func List() []Users {
 	list, err := model.List()
