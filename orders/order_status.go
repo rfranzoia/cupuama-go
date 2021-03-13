@@ -14,32 +14,11 @@ type OrderStatusType struct {
 }
 
 var (
-	OrderCreated = OrderStatusType{
-		Value:       0,
-		Description: "order-created",
-	}
-	OrderConfirmed = OrderStatusType{
-		Value:       1,
-		Description: "order-confirmed",
-	}
-	OrderInPreparation = OrderStatusType{
-		Value:       2,
-		Description: "order-in-preparation",
-	}
-	OrderReadyForDelivery = OrderStatusType{
-		Value:       3,
-		Description: "order-ready-for-delivery",
-	}
-	OrderDispatched = OrderStatusType{
-		Value:       4,
-		Description: "order-dispatched",
-	}
-	OrderDelivered = OrderStatusType{
-		Value:       5,
-		Description: "order-delivered",
-	}
-	OrderCanceled = OrderStatusType{
-		Value:       9,
-		Description: "order-canceled",
-	}
+	OrderCreated          = OrderStatusType{Value: 0, Description: "order-created"}
+	OrderConfirmed        = OrderStatusType{Value: 1, Description: "order-confirmed"}
+	OrderInPreparation    = OrderStatusType{Value: 2, Description: "order-in-preparation"}
+	OrderReadyForDelivery = OrderStatusType{Value: 3, Description: "order-ready-for-delivery"}
+	OrderDispatched       = OrderStatusType{Value: 4, Description: "order-dispatched"}
+	OrderDelivered        = OrderStatusType{Value: 5, Description: "order-delivered"}
+	OrderCanceled         = OrderStatusType{Value: 9, Description: "order-canceled"}
 )
