@@ -43,7 +43,7 @@ func (*OrderItemsStatus) List(orderID int64) ([]OrderItemsStatus, error) {
 		var oi OrderItems
 
 		err := rows.Scan(&currentOIS.Order.ID, &currentOIS.Order.OrderDate, &currentOIS.Order.TotalPrice,
-			&currentOIS.OrderStatus.ID, &currentOIS.OrderStatus.Status, &currentOIS.OrderStatus.StatusChangeDate, &currentOIS.OrderStatus.StatusDescription,
+			&currentOIS.OrderStatus.ID, &currentOIS.OrderStatus.Status.Value, &currentOIS.OrderStatus.StatusChangeDate, &currentOIS.OrderStatus.Status.Description,
 			&oi.ID, &oi.Product.ID, &oi.Product.Name, &oi.Fruit.ID, &oi.Fruit.Name, &oi.Quantity, &oi.UnitPrice)
 
 		if err != nil {
@@ -153,8 +153,7 @@ func (*OrderItemsStatus) Create(ois OrderItemsStatus) (OrderItemsStatus, error) 
 		Order: Orders{
 			ID: ois.Order.ID,
 		},
-		Status:            0,
-		StatusDescription: "order-created",
+		Status: OrderCreated,
 	}
 
 	err = ois.CreateOrderStatus(os, tx)
@@ -259,13 +258,13 @@ func (*OrderItemsStatus) CreateOrderStatus(os OrderStatus, tx *sql.Tx) error {
 		}
 	}
 
-	if os.Status < 0 {
+	if os.Status.Value < 0 {
 		err := fmt.Errorf("cannot create negative status")
 		log.Println("(CreateOrderStatus:checkNegative)", err)
 		tx.Rollback()
 		return err
 
-	} else if os.Status > 0 {
+	} else if os.Status.Value > 0 {
 		query := app.SQLCache["orders_list_max_status.sql"]
 		stmt, err := tx.Prepare(query)
 		if err != nil {
@@ -283,14 +282,14 @@ func (*OrderItemsStatus) CreateOrderStatus(os OrderStatus, tx *sql.Tx) error {
 		}
 
 		// prevents the creation of a status that's not valid
-		if latestStatus > os.Status {
+		if latestStatus > os.Status.Value {
 			err = errors.New("cannot set order to previous status")
 			log.Println("(CreateOrderStatus:validationPrevious)", err)
 			tx.Rollback()
 			return err
 
-		} else if os.Status != 9 && os.Status != (latestStatus+1) {
-			err = errors.New(fmt.Sprintf("status order is not correct: got %d and should be %d", os.Status, (latestStatus + 1)))
+		} else if os.Status.Value != 9 && os.Status.Value != (latestStatus+1) {
+			err = errors.New(fmt.Sprintf("status order is not correct: got %d and should be %d", os.Status.Value, (latestStatus + 1)))
 			log.Println("(CreateOrderStatus:validationNext)", err)
 			tx.Rollback()
 			return err
@@ -308,7 +307,7 @@ func (*OrderItemsStatus) CreateOrderStatus(os OrderStatus, tx *sql.Tx) error {
 
 	defer stmt.Close()
 
-	err = stmt.QueryRow(os.Order.ID, os.Status, os.StatusDescription).Scan(&os.ID)
+	err = stmt.QueryRow(os.Order.ID, os.Status.Value, os.Status.Description).Scan(&os.ID)
 
 	if err != nil {
 		log.Println("(CreateOrderStatus:Exec)", err)
@@ -374,8 +373,8 @@ func (ois *OrderItemsStatus) UpdateOrder(orderID int64, oi []OrderItems) error {
 		return err
 	}
 
-	orderExist := orderExists(orderID)
-	if !orderExist {
+	orderIsValid := orderExists(orderID) && orderHasStatus(orderID, OrderCreated)
+	if !orderIsValid {
 		err := fmt.Errorf("order %d doesn't exist", orderID)
 		log.Println("(UpdateOrder:GetOrder)", err)
 		tx.Rollback()
@@ -383,6 +382,19 @@ func (ois *OrderItemsStatus) UpdateOrder(orderID int64, oi []OrderItems) error {
 	}
 
 	// delete all items from an order
+	query := app.SQLCache["orders_orderItems_deleteAll.sql"]
+	stmt, err := db.Prepare(query)
+	if err != nil {
+		log.Println("(UpdateOrder:deleteAll:Prepare)", err)
+		return err
+	}
+
+	_, err = stmt.Exec(&orderID)
+	if err != nil {
+		log.Println("(UpdateOrder:deleteAll:exec)", err)
+		return err
+	}
+
 	// insert the new provided items into the order
 	err = ois.CreateOrderItems(orderID, oi, tx)
 	if err != nil {
@@ -398,6 +410,24 @@ func (ois *OrderItemsStatus) UpdateOrder(orderID int64, oi []OrderItems) error {
 	}
 
 	return nil
+}
+
+func orderHasStatus(orderID int64, status OrderStatusType) bool {
+	query := app.SQLCache["orders_list_max_status.sql"]
+	stmt, err := db.Prepare(query)
+	if err != nil {
+		log.Println("(orderHasStatus:Prepare)", err)
+		return false
+	}
+
+	var latestStatus int64
+	err = stmt.QueryRow(&orderID).Scan(&orderID, &latestStatus)
+	if err != nil {
+		log.Println("(orderHasStatus:Exec)", err)
+		return false
+	}
+
+	return (latestStatus == status.Value)
 }
 
 // orderExists checks if an order exists

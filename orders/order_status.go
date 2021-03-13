@@ -2,21 +2,44 @@ package orders
 
 // OrderStatus table definition
 type OrderStatus struct {
-	ID                int64
-	Order             Orders
-	Status            int64
-	StatusChangeDate  string
-	StatusDescription string
+	ID               int64
+	Order            Orders
+	Status           OrderStatusType
+	StatusChangeDate string
 }
 
-/*
-	current valid status are:
-		0 - order-created
-		1 - order-confirmed
-		2 - order-in-preparation
-		3 - order-ready-for-delivery
-		4 - order-dispatched
-		5 - order-delivered
-		9 - order-canceled
+type OrderStatusType struct {
+	Value       int64
+	Description string
+}
 
-*/
+var (
+	OrderCreated = OrderStatusType{
+		Value:       0,
+		Description: "order-created",
+	}
+	OrderConfirmed = OrderStatusType{
+		Value:       1,
+		Description: "order-confirmed",
+	}
+	OrderInPreparation = OrderStatusType{
+		Value:       2,
+		Description: "order-in-preparation",
+	}
+	OrderReadyForDelivery = OrderStatusType{
+		Value:       3,
+		Description: "order-ready-for-delivery",
+	}
+	OrderDispatched = OrderStatusType{
+		Value:       4,
+		Description: "order-dispatched",
+	}
+	OrderDelivered = OrderStatusType{
+		Value:       5,
+		Description: "order-delivered",
+	}
+	OrderCanceled = OrderStatusType{
+		Value:       9,
+		Description: "order-canceled",
+	}
+)

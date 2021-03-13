@@ -44,7 +44,7 @@ func setupOrderItemsStatus() {
 
 	orderItem2 := OrderItems{
 		Product: products.Products{
-			ID: 3,
+			ID: 1,
 		},
 		Fruit: fruits.Fruits{
 			ID: 5,
@@ -123,13 +123,47 @@ func TestCreateOrderStatus(t *testing.T) {
 	}
 
 	os := OrderStatus{
-		Order:             order.Order,
-		Status:            1,
-		StatusDescription: "order-confirmed",
+		Order:  order.Order,
+		Status: OrderConfirmed,
 	}
 
 	err = ois.CreateOrderStatus(os, nil)
 	if err != nil {
 		t.Errorf("fail create order status for TestCreateOrderStatus %v", err)
+	}
+}
+
+func TestUpdateOrder(t *testing.T) {
+	orderItem := OrderItems{
+		Product: products.Products{
+			ID: 1,
+		},
+		Fruit: fruits.Fruits{
+			ID: 5,
+		},
+		Quantity:  5,
+		UnitPrice: 7,
+	}
+
+	oi := []OrderItems{
+		orderItem,
+	}
+
+	order, err := ois.Create(testOIS)
+	if err != nil {
+		t.Errorf("error while creating an order %v", err)
+	}
+
+	err = ois.UpdateOrder(order.Order.ID, oi)
+	if err != nil {
+		t.Errorf("error while updating order %v", err)
+	}
+
+	order, err = ois.Get(order.Order.ID)
+	if err != nil {
+		t.Errorf("updated order retrieved has failed %v", err)
+
+	} else if len(order.OrderItems) != 1 {
+		t.Errorf("update order fail %v", err)
 	}
 }
