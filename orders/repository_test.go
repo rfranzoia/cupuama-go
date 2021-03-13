@@ -17,7 +17,7 @@ func init() {
 	var app config.AppConfig
 
 	// loads all queries into the application config cache
-	qc, err := utils.CreateSQLCacheForTests()
+	qc, err := utils.CreateSQLCache("../queries/*.sql")
 	if err != nil {
 		log.Fatal("cannot create queries cache")
 	}

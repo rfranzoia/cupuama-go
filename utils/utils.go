@@ -71,41 +71,24 @@ func Substring(value string, start, end uint) string {
 }
 
 // CreateSQLCache creates a map of queries to be used by the repository
-func CreateSQLCache() (map[string]string, error) {
+func CreateSQLCache(queriesLocation ...string) (map[string]string, error) {
 
-	myCache := map[string]string{}
-
-	queries, err := filepath.Glob("./queries/*.sql")
-	if err != nil {
-		log.Fatal("cannot read queries", err)
-
-	} else if len(queries) == 0 {
-		log.Fatal("no queries were found")
+	if len(queriesLocation) == 0 {
+		queriesLocation = append(queriesLocation, "./queries/*.sql")
 	}
 
-	for _, query := range queries {
-		name := filepath.Base(query)
-		sql, err := ioutil.ReadFile(query)
+	myCache := map[string]string{}
+	var queries []string
+	var err error
+
+	for _, queryPath := range queriesLocation {
+		queries, err = filepath.Glob(queryPath)
 		if err != nil {
-			log.Println(err)
-			return myCache, err
+			log.Fatal(fmt.Sprintf("cannot read queries from path %s", queryPath), err)
 		}
-		myCache[name] = string(sql)
 	}
 
-	return myCache, nil
-}
-
-// CreateSQLCacheForTests creates a map of queries to be used by the repository
-func CreateSQLCacheForTests() (map[string]string, error) {
-
-	myCache := map[string]string{}
-
-	queries, err := filepath.Glob("../queries/*.sql")
-	if err != nil {
-		log.Fatal("cannot read queries", err)
-
-	} else if len(queries) == 0 {
+	if len(queries) == 0 {
 		log.Fatal("no queries were found")
 	}
 
