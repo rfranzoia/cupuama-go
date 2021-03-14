@@ -1,6 +1,6 @@
 package fruits
 
-import "github.com/rfranzoia/cupuama-go/api/users"
+import "github.com/rfranzoia/cupuama-go/utils"
 
 // Fruits definition for fruits tables
 type Fruits struct {
@@ -8,7 +8,7 @@ type Fruits struct {
 	Name     string
 	Initials string
 	Harvest  string
-	Audit    users.Audit
+	Audit    utils.Audit
 }
 
 var model *Fruits
