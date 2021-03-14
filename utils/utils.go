@@ -30,7 +30,7 @@ func GetMD5Hash(text string) string {
 
 func NewUUID(keepHyphen ...bool) string {
 	uuidWithHyphen := uuid.New()
-	if !keepHyphen[0] {
+	if len(keepHyphen) > 0 && !keepHyphen[0] {
 		return strings.Replace(uuidWithHyphen.String(), "-", "", -1)
 	}
 	return uuidWithHyphen.String()
