@@ -17,7 +17,7 @@ func init() {
 	var app config.AppConfig
 
 	// loads all queries into the application config cache
-	qc, err := utils.CreateSQLCache("../queries/*.sql")
+	qc, err := utils.CreateSQLCache("../../queries/*.sql")
 	if err != nil {
 		log.Fatal("cannot create queries cache")
 	}
@@ -25,7 +25,7 @@ func init() {
 	app.SQLCache = qc
 	app.UseCache = false
 
-	NewOrderAPI(&app)
+	NewAPI(&app)
 
 	setupOrderItemsStatus()
 }
@@ -75,7 +75,7 @@ func TestList(t *testing.T) {
 }
 
 func TestGetFoundOrder(t *testing.T) {
-	order, err := ois.Get(8)
+	order, err := ois.Get(34)
 	if err != nil {
 		t.Errorf("error while retrieving the order %v", err)
 

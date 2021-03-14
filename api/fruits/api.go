@@ -16,11 +16,11 @@ func NewAPI(app *config.AppConfig) *api {
 // NewOrderAPI setups the configuration for orders
 func (api *api) RegisterRouting(g *echo.Group) {
 
-	gu := g.Group("/v2/products")
-	gu.GET("", api.Service.List)
-	gu.GET("/:id", api.Service.Get)
-	gu.POST("", api.Service.Create)
-	gu.PUT("/:id", api.Service.Update)
-	gu.DELETE("/:id", api.Service.Delete)
+	grf := g.Group("/v2/fruits")
+	grf.GET("", api.Service.List)
+	grf.GET("/:id", api.Service.Get)
+	grf.POST("", api.Service.Create)
+	grf.PUT("/:id", api.Service.Update)
+	grf.DELETE("/:id", api.Service.Delete)
 
 }

@@ -17,7 +17,6 @@ func (*OrderItemsStatus) List(orderID int64) ([]OrderItemsStatus, error) {
 
 	orderList := app.SQLCache["orders_list.sql"]
 	stmt, err := db.Prepare(orderList)
-
 	if err != nil {
 		log.Println("(ListOrder:Prepare)", err)
 		return nil, err
@@ -38,6 +37,7 @@ func (*OrderItemsStatus) List(orderID int64) ([]OrderItemsStatus, error) {
 
 	var ois OrderItemsStatus
 	var currentOIS OrderItemsStatus
+	records := 0
 
 	for rows.Next() {
 		var oi OrderItems
@@ -61,6 +61,7 @@ func (*OrderItemsStatus) List(orderID int64) ([]OrderItemsStatus, error) {
 			ois.Order.TotalPrice = currentOIS.Order.TotalPrice
 			ois.OrderStatus = currentOIS.OrderStatus
 			ois.OrderStatus.Order = currentOIS.Order
+			records++
 
 		} else if ois.Order.ID != currentOIS.Order.ID {
 			ois.OrderItems = items
@@ -83,6 +84,12 @@ func (*OrderItemsStatus) List(orderID int64) ([]OrderItemsStatus, error) {
 	ois.OrderItems = items
 
 	list = append(list, ois)
+
+	if records == 0 {
+		log.Println("no records found")
+		err = errors.New("no records were found")
+		return nil, err
+	}
 
 	err = rows.Err()
 	if err != nil {

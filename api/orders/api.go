@@ -1,44 +1,26 @@
 package orders
 
-import "github.com/rfranzoia/cupuama-go/config"
+import (
+	"github.com/labstack/echo/v4"
+	"github.com/rfranzoia/cupuama-go/config"
+)
 
-var app *config.AppConfig
+type api struct {
+	Service service
+}
+
+func NewAPI(app *config.AppConfig) *api {
+	return &api{Service: NewOrderService(app)}
+}
 
 // NewOrderAPI setups the configuration for orders
-func NewOrderAPI(a *config.AppConfig) {
-	app = a
-}
+func (api *api) RegisterRouting(g *echo.Group) {
 
-// List list all orders
-func List() []OrderItemsStatus {
-	list, err := model.List(-1)
-	if err != nil {
-		return nil
-	}
-	return list
-}
+	gro := g.Group("/v2/orders")
+	gro.GET("", api.Service.List)
+	gro.GET("/:id", api.Service.Get)
+	// gu.POST("", api.Service.Create)
+	// gu.PUT("/:id", api.Service.Update)
+	// gu.DELETE("/:id", api.Service.Delete)
 
-// Get retrive an order by its ID
-func Get(orderID int64) OrderItemsStatus {
-	order, err := model.Get(orderID)
-	if err != nil {
-		return OrderItemsStatus{}
-	}
-	return order
-}
-
-// Create creates an order
-func Create(ois OrderItemsStatus) {
-	ois, err := model.Create(ois)
-	if err != nil {
-		// do something later
-	}
-}
-
-// CreateOrderStatus creates a new status for an order
-func CreateOrderStatus(os OrderStatus) {
-	err := model.CreateOrderStatus(os, nil)
-	if err != nil {
-		// do something later
-	}
 }
