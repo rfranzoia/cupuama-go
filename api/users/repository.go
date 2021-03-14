@@ -12,10 +12,8 @@ var db = database.GetConnection()
 // Get retrieve an non-deleted user by login
 func (*Users) Get(login string) (Users, error) {
 
-	stmt, err := db.Prepare(
-		"select login, password, first_name, last_name, date_of_birth " +
-			"from users " +
-			"where deleted = false and login = $1")
+	query := app.SQLCache["users_get_login.sql"]
+	stmt, err := db.Prepare(query)
 
 	if err != nil {
 		log.Fatal("(GetUser:Prepare)", err)
@@ -30,7 +28,10 @@ func (*Users) Get(login string) (Users, error) {
 			&user.Password,
 			&user.Person.FirstName,
 			&user.Person.LastName,
-			&user.Person.DateOfBirth)
+			&user.Person.DateOfBirth,
+			&user.Audit.Deleted,
+			&user.Audit.DateCreated,
+			&user.Audit.DateUpdated)
 
 	if err != nil {
 		log.Println("(GetUser:QueryRow:Scan)", err)
@@ -43,10 +44,8 @@ func (*Users) Get(login string) (Users, error) {
 //List retrieves all non deleted users
 func (*Users) List() ([]Users, error) {
 
-	stmt, err := db.Prepare(
-		"select login, password, first_name, last_name, date_of_birth " +
-			"from users " +
-			"where deleted = false")
+	query := app.SQLCache["users_list.sql"]
+	stmt, err := db.Prepare(query)
 
 	if err != nil {
 		log.Println("(ListUser:Prepare)", err)
@@ -72,7 +71,10 @@ func (*Users) List() ([]Users, error) {
 			&user.Password,
 			&user.Person.FirstName,
 			&user.Person.LastName,
-			&user.Person.DateOfBirth)
+			&user.Person.DateOfBirth,
+			&user.Audit.Deleted,
+			&user.Audit.DateCreated,
+			&user.Audit.DateUpdated)
 
 		if err != nil {
 			log.Println("(ListUser:Scan)", err)

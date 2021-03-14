@@ -1,6 +1,7 @@
 package fruits
 
 import (
+	"errors"
 	"log"
 
 	"github.com/rfranzoia/cupuama-go/database"
@@ -11,10 +12,8 @@ var db = database.GetConnection()
 // Get retrieve an non-deleted fruit by login
 func (*Fruits) Get(id int64) (Fruits, error) {
 
-	stmt, err := db.Prepare(
-		"select id, name, harvest, initials " +
-			"from fruits " +
-			"where deleted = false and id = $1")
+	query := app.SQLCache["fruits_get_id.sql"]
+	stmt, err := db.Prepare(query)
 
 	if err != nil {
 		log.Fatal("(GetFruit:Prepare)", err)
@@ -28,7 +27,10 @@ func (*Fruits) Get(id int64) (Fruits, error) {
 		Scan(&fruit.ID,
 			&fruit.Name,
 			&fruit.Harvest,
-			&fruit.Initials)
+			&fruit.Initials,
+			&fruit.Audit.Deleted,
+			&fruit.Audit.DateCreated,
+			&fruit.Audit.DateUpdated)
 
 	if err != nil {
 		log.Println("(GetFruit:QueryRow:Scan)", err)
@@ -41,14 +43,13 @@ func (*Fruits) Get(id int64) (Fruits, error) {
 //List retrieves all non deleted fruits
 func (*Fruits) List() ([]Fruits, error) {
 
-	stmt, err := db.Prepare(
-		"select id, name, harvest, initials " +
-			"from fruits " +
-			"where deleted = false")
+	query := app.SQLCache["fruits_list.sql"]
+	stmt, err := db.Prepare(query)
 
 	if err != nil {
 		log.Println("(ListFruit:Prepare)", err)
-		return nil, err
+		empty := []Fruits{}
+		return empty, err
 	}
 
 	defer stmt.Close()
@@ -56,7 +57,8 @@ func (*Fruits) List() ([]Fruits, error) {
 	rows, err := stmt.Query()
 	if err != nil {
 		log.Println("(ListFruit:Query)", err)
-		return nil, err
+		empty := []Fruits{}
+		return empty, err
 	}
 
 	defer rows.Close()
@@ -69,11 +71,15 @@ func (*Fruits) List() ([]Fruits, error) {
 		err := rows.Scan(&fruit.ID,
 			&fruit.Name,
 			&fruit.Harvest,
-			&fruit.Initials)
+			&fruit.Initials,
+			&fruit.Audit.Deleted,
+			&fruit.Audit.DateCreated,
+			&fruit.Audit.DateUpdated)
 
 		if err != nil {
 			log.Println("(ListFruit:Scan)", err)
-			return nil, err
+			empty := []Fruits{}
+			return empty, err
 		}
 
 		list = append(list, fruit)
@@ -82,18 +88,24 @@ func (*Fruits) List() ([]Fruits, error) {
 	err = rows.Err()
 	if err != nil {
 		log.Println("(ListFruit:Rows)", err)
-		return nil, err
+		empty := []Fruits{}
+		return empty, err
+	} else if len(list) == 0 {
+		err = errors.New("No fruits were found")
+		log.Println("(ListFruit:Result)", err)
+		empty := []Fruits{}
+		return empty, err
 	}
 
 	return list, nil
 }
 
 // Create inserts a new fruit into the database and returns the new ID
-func (*Fruits) Create(fruit Fruits) (int64, error) {
+func (*Fruits) Create(fruit *Fruits) (int64, error) {
 
 	stmt, err := db.Prepare(
-		"insert into fruits (name, harvest, initials) " +
-			"values ($1, $2, $3) returning id")
+		"insert into fruits (name, harvest, initials, date_created) " +
+			"values ($1, $2, $3, now()) returning id")
 
 	if err != nil {
 		log.Println("(CreateFruit:Prepare)", err)
@@ -143,7 +155,7 @@ func (*Fruits) Delete(id int64) error {
 			"update fruits " +
 				"set deleted = true, " +
 				"date_updated = now() " +
-				"where id = $4")
+				"where id = $1")
 
 		if err != nil {
 			log.Println("(DeteleFruit:Logic:Prepare)", err)
@@ -163,7 +175,7 @@ func (*Fruits) Delete(id int64) error {
 }
 
 // Update modify the data for the specified fruit
-func (*Fruits) Update(fruit Fruits) (Fruits, error) {
+func (*Fruits) Update(fruit *Fruits) (Fruits, error) {
 
 	_, err := model.Get(fruit.ID)
 	if err != nil {
@@ -193,6 +205,6 @@ func (*Fruits) Update(fruit Fruits) (Fruits, error) {
 		return Fruits{}, err
 	}
 
-	return fruit, nil
+	return *fruit, nil
 
 }
