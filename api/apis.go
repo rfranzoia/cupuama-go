@@ -10,7 +10,10 @@ import (
 
 func RegisterAPIRoutes(g *echo.Group, app *config.AppConfig) {
 
-	users.RegisterRouting(g, app)
+	u := users.NewAPI(app)
+	u.RegisterRouting(g)
+
 	fruits.RegisterRouting(g, app)
 	products.RegisterRouting(g, app)
+
 }

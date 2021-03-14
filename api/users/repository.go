@@ -1,6 +1,7 @@
 package users
 
 import (
+	"errors"
 	"log"
 
 	"github.com/rfranzoia/cupuama-go/database"
@@ -123,6 +124,7 @@ func (*Users) Delete(login string) error {
 	_, err := model.Get(login)
 	if err != nil {
 		log.Println("(DeleteUser:Get)", "User doesn't exist")
+		err = errors.New("user doesn't exists")
 		return err
 	}
 

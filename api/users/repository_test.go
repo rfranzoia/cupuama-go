@@ -26,7 +26,7 @@ func init() {
 	app.SQLCache = qc
 	app.UseCache = false
 
-	NewAPI(&app)
+	New(&app)
 
 	testUser = Users{
 		Login:    generateRandomLogin(),
