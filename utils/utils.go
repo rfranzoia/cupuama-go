@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // YMFormat Date format for Year/Month equivalent to YYYYMM
@@ -24,6 +26,14 @@ const DateTimeLong = "2006-01-02 15:04"
 func GetMD5Hash(text string) string {
 	hash := md5.Sum([]byte(text))
 	return hex.EncodeToString(hash[:])
+}
+
+func NewUUID(keepHyphen ...bool) string {
+	uuidWithHyphen := uuid.New()
+	if !keepHyphen[0] {
+		return strings.Replace(uuidWithHyphen.String(), "-", "", -1)
+	}
+	return uuidWithHyphen.String()
 }
 
 // MessageJSON Default return values for services

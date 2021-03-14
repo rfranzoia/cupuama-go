@@ -28,7 +28,7 @@ func init() {
 
 	NewFruitService(&app)
 
-	rndName := genRndName()
+	rndName := utils.NewUUID()
 	rndName = utils.Substring(rndName, 0, 10)
 	rndInit := strings.ToUpper(utils.Substring(rndName, 0, 4))
 
@@ -37,12 +37,6 @@ func init() {
 		Initials: rndInit,
 		Harvest:  "All Year",
 	}
-}
-
-func genRndName() string {
-	uuidWithHyphen := uuid.New()
-	uuid := strings.Replace(uuidWithHyphen.String(), "-", "", -1)
-	return uuid
 }
 
 func generateRandomLogin() string {

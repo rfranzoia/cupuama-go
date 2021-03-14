@@ -2,10 +2,7 @@ package users
 
 import (
 	"log"
-	"strings"
 	"testing"
-
-	"github.com/google/uuid"
 
 	"github.com/rfranzoia/cupuama-go/config"
 	"github.com/rfranzoia/cupuama-go/utils"
@@ -29,7 +26,7 @@ func init() {
 	NewUserService(&app)
 
 	testUser = Users{
-		Login:    generateRandomLogin(),
+		Login:    utils.NewUUID(),
 		Password: utils.GetMD5Hash("(Default12345.)"),
 		Person: Person{
 			FirstName:   "Jose",
@@ -37,12 +34,6 @@ func init() {
 			DateOfBirth: "1975-03-21",
 		},
 	}
-}
-
-func generateRandomLogin() string {
-	uuidWithHyphen := uuid.New()
-	uuid := strings.Replace(uuidWithHyphen.String(), "-", "", -1)
-	return uuid
 }
 
 func TestCreate(t *testing.T) {
