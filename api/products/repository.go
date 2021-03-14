@@ -11,10 +11,8 @@ var db = database.GetConnection()
 // Get retrieve an non-deleted product by login
 func (*Products) Get(id int64) (Products, error) {
 
-	stmt, err := db.Prepare(
-		"select id, name, unit, initials " +
-			"from products " +
-			"where deleted = false and id = $1")
+	query := app.SQLCache["products_get_id.sql"]
+	stmt, err := db.Prepare(query)
 
 	if err != nil {
 		log.Fatal("(GetProduct:Prepare)", err)
@@ -27,7 +25,10 @@ func (*Products) Get(id int64) (Products, error) {
 	err = stmt.QueryRow(id).
 		Scan(&product.ID,
 			&product.Name,
-			&product.Unit)
+			&product.Unit,
+			&product.Audit.Deleted,
+			&product.Audit.DateCreated,
+			&product.Audit.DateUpdated)
 
 	if err != nil {
 		log.Println("(GetProduct:QueryRow:Scan)", err)
@@ -40,10 +41,8 @@ func (*Products) Get(id int64) (Products, error) {
 //List retrieves all non deleted products
 func (*Products) List() ([]Products, error) {
 
-	stmt, err := db.Prepare(
-		"select id, name, unit " +
-			"from products " +
-			"where deleted = false")
+	query := app.SQLCache["products_list.sql"]
+	stmt, err := db.Prepare(query)
 
 	if err != nil {
 		log.Println("(ListProduct:Prepare)", err)
@@ -67,7 +66,10 @@ func (*Products) List() ([]Products, error) {
 
 		err := rows.Scan(&product.ID,
 			&product.Name,
-			&product.Unit)
+			&product.Unit,
+			&product.Audit.Deleted,
+			&product.Audit.DateCreated,
+			&product.Audit.DateUpdated)
 
 		if err != nil {
 			log.Println("(ListProduct:Scan)", err)
@@ -87,7 +89,7 @@ func (*Products) List() ([]Products, error) {
 }
 
 // Create inserts a new product into the database and returns the new ID
-func (*Products) Create(product Products) (int64, error) {
+func (*Products) Create(product *Products) (int64, error) {
 
 	stmt, err := db.Prepare(
 		"insert into products (name, unit) " +
@@ -140,7 +142,7 @@ func (*Products) Delete(id int64) error {
 			"update products " +
 				"set deleted = true, " +
 				"date_updated = now() " +
-				"where id = $4")
+				"where id = $1")
 
 		if err != nil {
 			log.Println("(DeteleProduct:Logic:Prepare)", err)
@@ -160,7 +162,7 @@ func (*Products) Delete(id int64) error {
 }
 
 // Update modify the data for the specified product
-func (*Products) Update(product Products) (Products, error) {
+func (*Products) Update(product *Products) (Products, error) {
 
 	_, err := model.Get(product.ID)
 	if err != nil {
@@ -189,6 +191,6 @@ func (*Products) Update(product Products) (Products, error) {
 		return Products{}, err
 	}
 
-	return product, nil
+	return *product, nil
 
 }
