@@ -13,7 +13,10 @@ func RegisterAPIRoutes(g *echo.Group, app *config.AppConfig) {
 	u := users.NewAPI(app)
 	u.RegisterRouting(g)
 
-	fruits.RegisterRouting(g, app)
-	products.RegisterRouting(g, app)
+	p := products.NewAPI(app)
+	p.RegisterRouting(g)
+
+	f := fruits.NewAPI(app)
+	f.RegisterRouting(g)
 
 }

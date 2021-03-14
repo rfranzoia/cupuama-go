@@ -10,7 +10,7 @@ type api struct {
 }
 
 func NewAPI(app *config.AppConfig) *api {
-	return &api{Service: New(app)}
+	return &api{Service: NewUserService(app)}
 }
 
 // NewOrderAPI setups the configuration for orders

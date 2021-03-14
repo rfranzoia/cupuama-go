@@ -1,9 +1,10 @@
-package users
+package products
 
 import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rfranzoia/cupuama-go/config"
@@ -15,16 +16,19 @@ type service struct {
 
 var app *config.AppConfig
 
-func NewUserService(a *config.AppConfig) service {
+func NewProductService(a *config.AppConfig) service {
 	app = a
 	return service{}
 }
 
-// List retrieves all users
+// List retrieves all products
 func (s *service) List(c echo.Context) error {
 	list, err := model.List()
 	if err != nil {
-		return nil
+		return c.JSON(http.StatusNotFound, utils.MessageJSON{
+			Message: fmt.Sprintf("Error searching Products"),
+			Value:   err.Error(),
+		})
 	}
 	defer c.Request().Body.Close()
 
@@ -33,14 +37,15 @@ func (s *service) List(c echo.Context) error {
 	})
 }
 
-// Get retrieves an user by login
+// Get retrieves an product by id
 func (s *service) Get(c echo.Context) error {
-	login := c.Param("login")
 
-	u, err := model.Get(login)
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	u, err := model.Get(id)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
-			Message: fmt.Sprintf("Error searching User %s", login),
+			Message: fmt.Sprintf("Error searching Product %d", id),
 			Value:   err.Error(),
 		})
 	}
@@ -50,31 +55,31 @@ func (s *service) Get(c echo.Context) error {
 	})
 }
 
-// Create add a new user
+// Create add a new product
 func (s *service) Create(c echo.Context) error {
 
-	user := new(Users)
+	product := new(Products)
 
-	if err := c.Bind(user); err != nil {
-		log.Println("(CreateUser:Bind)", err)
+	if err := c.Bind(product); err != nil {
+		log.Println("(CreateProduct:Bind)", err)
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
-			Message: "Error creating user",
+			Message: "Error creating product",
 			Value:   err.Error(),
 		})
 	}
 
-	if err := model.Create(user); err != nil {
-		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
-			Message: "Error creating user",
-			Value:   err.Error(),
-		})
-	}
-
-	login := user.Login
-	u, err := model.Get(login)
+	id, err := model.Create(product)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
-			Message: "Error creating user",
+			Message: "Error creating product",
+			Value:   err.Error(),
+		})
+	}
+
+	u, err := model.Get(id)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
+			Message: "Error creating product",
 			Value:   err.Error(),
 		})
 	}
@@ -84,55 +89,55 @@ func (s *service) Create(c echo.Context) error {
 	})
 }
 
-// Delete removes an user by login
+// Delete removes an product by id
 func (s *service) Delete(c echo.Context) error {
 
-	login := c.Param("login")
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
-	if err := model.Delete(login); err != nil {
+	if err := model.Delete(id); err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
-			Message: "Error removing user",
+			Message: "Error removing product",
 			Value:   err.Error(),
 		})
 	}
 
 	return c.JSON(http.StatusOK, utils.MessageJSON{
-		Message: "user successfully Deleted",
+		Message: "product successfully Deleted",
 	})
 }
 
-// Update changes the data of an user
+// Update changes the data of an product
 func (s *service) Update(c echo.Context) error {
 
-	login := c.Param("login")
-	user := new(Users)
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	product := new(Products)
 
-	if err := c.Bind(user); err != nil {
+	if err := c.Bind(product); err != nil {
 		log.Println("(Update:Bind)", err)
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
-			Message: "Error modifying user data",
+			Message: "Error modifying product data",
 			Value:   err.Error(),
 		})
 	}
 
-	user.Login = login
-	_, err := model.Update(user)
+	product.ID = id
+	_, err := model.Update(product)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
-			Message: "Error modifying user data",
+			Message: "Error modifying product data",
 			Value:   err.Error(),
 		})
 	}
 
-	u, err := model.Get(login)
+	f, err := model.Get(id)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
-			Message: "Error retrieving modified user",
+			Message: "Error retrieving modified product",
 			Value:   err.Error(),
 		})
 	}
 
 	return c.JSON(http.StatusCreated, utils.MessageJSON{
-		Value: u,
+		Value: f,
 	})
 }
