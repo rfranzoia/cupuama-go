@@ -149,7 +149,7 @@ func (ois *OrderItemsStatus) Get(orderID int64) (OrderItemsStatus, error) {
 }
 
 // Create creates a new Order with Items and Status
-func (*OrderItemsStatus) Create(ois OrderItemsStatus) (OrderItemsStatus, error) {
+func (ois *OrderItemsStatus) Create(order *OrderItemsStatus) (int64, error) {
 
 	ctx := context.Background()
 	tx, err := db.BeginTx(ctx, nil)
@@ -164,22 +164,28 @@ func (*OrderItemsStatus) Create(ois OrderItemsStatus) (OrderItemsStatus, error) 
 
 	if err != nil {
 		log.Println("(CreateOrder:Prepare)", err)
-		return OrderItemsStatus{}, err
+		return -1, err
 	}
 
-	err = stmt.QueryRow(&ois.Order.TotalPrice).Scan(&ois.Order.ID)
+	// calculates the total price before inserting the order
+	var totalPrice = 0.00
+	for _, item := range order.OrderItems {
+		totalPrice += (item.UnitPrice * float64(item.Quantity))
+	}
+
+	err = stmt.QueryRow(&totalPrice).Scan(&order.Order.ID)
 	if err != nil {
 		log.Println("(CreateOrder:Exec)", err)
 		tx.Rollback()
-		return OrderItemsStatus{}, err
+		return -1, err
 	}
 
 	// creates all order items
-	err = ois.CreateOrderItems(ois.Order.ID, ois.OrderItems, tx)
+	err = ois.CreateOrderItems(order.Order.ID, order.OrderItems, tx)
 	if err != nil {
 		log.Println("(CreateOrderItems:Exec)", err)
 		tx.Rollback()
-		return OrderItemsStatus{}, err
+		return -1, err
 	}
 
 	// creates the first status: 0 - order-created
@@ -187,22 +193,22 @@ func (*OrderItemsStatus) Create(ois OrderItemsStatus) (OrderItemsStatus, error) 
 		Status: OrderCreated,
 	}
 
-	if err = ois.CreateOrderStatus(ois.Order.ID, os, tx); err != nil {
+	if err = ois.CreateOrderStatus(order.Order.ID, os, tx); err != nil {
 		log.Println("(CreateOrderStatus:Exec)", err)
 		tx.Rollback()
-		return OrderItemsStatus{}, err
+		return -1, err
 	}
 
 	if err = tx.Commit(); err != nil {
 		log.Println("(CreateOrder:Commit)", err)
-		return OrderItemsStatus{}, err
+		return -1, err
 	}
 
-	return ois, nil
+	return order.Order.ID, nil
 }
 
 // CreateOrderItems insert a list of order items
-func (*OrderItemsStatus) CreateOrderItems(orderID int64, orderItems []OrderItems, tx *sql.Tx) error {
+func (ois *OrderItemsStatus) CreateOrderItems(orderID int64, orderItems []OrderItems, tx *sql.Tx) error {
 
 	var err error
 

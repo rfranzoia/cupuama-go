@@ -11,7 +11,7 @@ import (
 )
 
 var ois OrderItemsStatus
-var testOIS OrderItemsStatus
+var testOrder OrderItemsStatus
 
 func init() {
 	var app config.AppConfig
@@ -53,7 +53,7 @@ func setupOrderItemsStatus() {
 		UnitPrice: 7.5,
 	}
 
-	testOIS = OrderItemsStatus{
+	testOrder = OrderItemsStatus{
 		Order: Orders{
 			TotalPrice: 150.0,
 		},
@@ -76,13 +76,21 @@ func TestList(t *testing.T) {
 
 func TestGetFoundOrder(t *testing.T) {
 	// create the order and store its id
+	id, err := ois.Create(&testOrder)
+	if err != nil {
+		t.Errorf("error while creating an order %v", err)
+	}
+
+	if id <= 0 {
+		t.Errorf("order was not created properly")
+	}
 
 	// attempt to get the order created
-	order, err := ois.Get(34)
+	order, err := ois.Get(id)
 	if err != nil {
 		t.Errorf("error while retrieving the order %v", err)
 
-	} else if order.Order.ID == 0 {
+	} else if order.Order.ID <= 0 {
 		t.Errorf("expected order was not found")
 	}
 }
@@ -99,20 +107,20 @@ func TestGetNotFoundOrder(t *testing.T) {
 
 func TestCreate(t *testing.T) {
 
-	order, err := ois.Create(testOIS)
+	id, err := ois.Create(&testOrder)
 	if err != nil {
 		t.Errorf("error while creating an order %v", err)
 	}
 
-	if order.Order.ID == 0 {
+	if id <= 0 {
 		t.Errorf("order was not created properly")
 	}
 
-	record, err := ois.Get(order.Order.ID)
+	record, err := ois.Get(id)
 	if err != nil {
 		t.Errorf("cannot retrive the order because it was not created properly")
 
-	} else if record.Order.ID != order.Order.ID {
+	} else if record.Order.ID != id {
 		t.Errorf("retrieved created order differs")
 	}
 
@@ -120,7 +128,7 @@ func TestCreate(t *testing.T) {
 
 func TestCreateOrderStatus(t *testing.T) {
 
-	order, err := ois.Create(testOIS)
+	id, err := ois.Create(&testOrder)
 	if err != nil {
 		t.Errorf("fail create order for TestCreateOrderStatus %v", err)
 	}
@@ -129,7 +137,7 @@ func TestCreateOrderStatus(t *testing.T) {
 		Status: OrderConfirmed,
 	}
 
-	err = ois.CreateOrderStatus(order.Order.ID, os, nil)
+	err = ois.CreateOrderStatus(id, os, nil)
 	if err != nil {
 		t.Errorf("fail create order status for TestCreateOrderStatus %v", err)
 	}
@@ -151,17 +159,17 @@ func TestUpdateOrder(t *testing.T) {
 		orderItem,
 	}
 
-	order, err := ois.Create(testOIS)
+	id, err := ois.Create(&testOrder)
 	if err != nil {
 		t.Errorf("(TestUpdateOrder) error creating an order %v", err)
 	}
 
-	err = ois.UpdateOrder(order.Order.ID, oi)
+	err = ois.UpdateOrder(id, oi)
 	if err != nil {
 		t.Errorf("(TestUpdateOrder) error updating order %v", err)
 	}
 
-	order, err = ois.Get(order.Order.ID)
+	order, err := ois.Get(id)
 	if err != nil {
 		t.Errorf("(TestUpdateOrder) after update order.Get() has failed %v", err)
 
@@ -183,17 +191,17 @@ func TestDeleteItemFromOrder(t *testing.T) {
 		UnitPrice: 7.5,
 	}
 
-	order, err := ois.Create(testOIS)
+	id, err := ois.Create(&testOrder)
 	if err != nil {
 		t.Errorf("(TestDeleteItemFromOrder) error creating an order %v", err)
 	}
 
-	err = ois.DeleteOrderItems(order.Order.ID, orderItem)
+	err = ois.DeleteOrderItems(id, orderItem)
 	if err != nil {
 		t.Errorf("(TestDeleteItemFromOrder) error removing order item(s) %v", err)
 	}
 
-	order, err = ois.Get(order.Order.ID)
+	order, err := ois.Get(id)
 	if err != nil {
 		t.Errorf("(TestDeleteItemFromOrder) after delete OrderItem order.Get() has failed %v", err)
 

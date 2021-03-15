@@ -2,6 +2,7 @@ package orders
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -44,7 +45,7 @@ func (s *service) Get(c echo.Context) error {
 
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
-	u, err := model.Get(id)
+	o, err := model.Get(id)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
 			Message: fmt.Sprintf("error searching Order %d", id),
@@ -53,17 +54,44 @@ func (s *service) Get(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, utils.MessageJSON{
-		Value: u,
+		Value: o,
 	})
 
 }
 
 // Create creates an order
-func Create(ois OrderItemsStatus) {
-	ois, err := model.Create(ois)
-	if err != nil {
-		// do something later
+func (s *service) Create(c echo.Context) error {
+
+	order := new(OrderItemsStatus)
+
+	if err := c.Bind(order); err != nil {
+		log.Println("(CreateFruit:Bind)", err)
+		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
+			Message: "Error creating Order",
+			Value:   err.Error(),
+		})
 	}
+
+	id, err := model.Create(order)
+	if err != nil || id <= 0 {
+		log.Println("(CreateFruit:Create)", err)
+		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
+			Message: "Error creating Order",
+			Value:   err.Error(),
+		})
+	}
+
+	o, err := model.Get(id)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, utils.MessageJSON{
+			Message: fmt.Sprintf("error searching created Order %d", id),
+			Value:   err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusCreated, utils.MessageJSON{
+		Value: o,
+	})
 }
 
 // CreateOrderStatus creates a new status for an order
