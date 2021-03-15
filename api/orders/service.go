@@ -98,12 +98,16 @@ func (s *service) ChangeOrderStatus(c echo.Context) error {
 		})
 	}
 
+	if Status.equals(OrderCanceled) {
+		return s.CancelOrder(c)
+	}
+
+	// if changing to OrderCanceled, then just call the appropriate CancelOrder method
 	os := OrderStatus{
 		Status: Status,
 	}
 
-	err := model.CreateOrderStatus(orderID, os, nil)
-	if err != nil {
+	if err := model.CreateOrderStatus(orderID, os, nil); err != nil {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
 			Message: fmt.Sprintf("error adding status ´%s´ to order %d", Status.Description, orderID),
 			Value:   err.Error(),
@@ -112,4 +116,19 @@ func (s *service) ChangeOrderStatus(c echo.Context) error {
 
 	return s.Get(c)
 
+}
+
+func (s *service) CancelOrder(c echo.Context) error {
+	orderID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	if err := model.CancelOrder(orderID); err != nil {
+		return c.JSON(http.StatusNotFound, utils.MessageJSON{
+			Message: fmt.Sprintf("error canceling order %d", orderID),
+			Value:   err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, utils.MessageJSON{
+		Message: "Order successfully Canceled",
+	})
 }

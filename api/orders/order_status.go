@@ -26,3 +26,18 @@ var (
 		4: OrderDispatched, 5: OrderDelivered, 9: OrderCanceled,
 	}
 )
+
+func (os *OrderStatus) equals(other OrderStatus) bool {
+	if os.ID == other.ID || os.Status.Value == other.Status.Value {
+		return true
+	}
+	return false
+}
+
+func (ost *OrderStatusType) equals(other OrderStatusType) bool {
+	if ost.Value == other.Value {
+		return true
+	}
+
+	return false
+}
