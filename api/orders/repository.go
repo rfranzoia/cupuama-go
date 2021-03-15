@@ -329,6 +329,12 @@ func (*OrderItemsStatus) CreateOrderStatus(orderID int64, os OrderStatus, tx *sq
 		log.Println("(CreateOrderStatus:validationNext)", err)
 		tx.Rollback()
 		return err
+
+	} else if os.Status.Value == 9 && latestStatus >= 4 {
+		err = errors.New(fmt.Sprintf("cannot cancel order %d after status ´%s´", orderID, OrderStatusMap[4].Description))
+		log.Println("(CreateOrderStatus:validationCancel)", err)
+		tx.Rollback()
+		return err
 	}
 
 	query = app.SQLCache["orders_orderStatus_insert.sql"]
