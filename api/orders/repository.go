@@ -483,7 +483,7 @@ func (ois *OrderItemsStatus) CancelOrder(orderID int64) error {
 
 	if !orderExists(orderID) {
 		err := errors.New("order doesn't exists")
-		log.Println("(CancelOrder:OrderNotFount)")
+		log.Println("(CancelOrder:OrderNotFound)")
 		return err
 	}
 
@@ -493,7 +493,7 @@ func (ois *OrderItemsStatus) CancelOrder(orderID int64) error {
 		return err
 	}
 
-	if order.OrderStatus.Status.Value == OrderCanceled.Value {
+	if order.OrderStatus.Status.equals(OrderCanceled) {
 		err := errors.New("order is already canceled")
 		log.Println("(CancelOrder:OrderCanceledAlready)")
 		return err
