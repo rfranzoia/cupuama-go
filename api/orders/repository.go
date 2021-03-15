@@ -299,40 +299,40 @@ func (*OrderItemsStatus) CreateOrderStatus(orderID int64, os OrderStatus, tx *sq
 		tx.Rollback()
 		return err
 
-	} else if os.Status.Value > 0 {
-		query := app.SQLCache["orders_list_max_status.sql"]
-		stmt, err := tx.Prepare(query)
-		if err != nil {
-			log.Println("(CreateOrderStatus:ListMax:Prepare)", err)
-			tx.Rollback()
-			return err
-		}
-
-		var latestStatus int64
-		err = stmt.QueryRow(&orderID).Scan(&orderID, &latestStatus)
-		if err != nil {
-			log.Println("(CreateOrderStatus:ListMax:Exec)", err)
-			tx.Rollback()
-			return err
-		}
-
-		// prevents the creation of a status that's not valid
-		if latestStatus > os.Status.Value {
-			err = errors.New("cannot set order to previous status")
-			log.Println("(CreateOrderStatus:validationPrevious)", err)
-			tx.Rollback()
-			return err
-
-		} else if os.Status.Value != 9 && os.Status.Value != (latestStatus+1) {
-			err = errors.New(fmt.Sprintf("status order is not correct: got %d and should be %d", os.Status.Value, (latestStatus + 1)))
-			log.Println("(CreateOrderStatus:validationNext)", err)
-			tx.Rollback()
-			return err
-		}
 	}
 
-	query := app.SQLCache["orders_orderStatus_insert.sql"]
+	query := app.SQLCache["orders_list_max_status.sql"]
 	stmt, err := tx.Prepare(query)
+	if err != nil {
+		log.Println("(CreateOrderStatus:ListMax:Prepare)", err)
+		tx.Rollback()
+		return err
+	}
+
+	var latestStatus int64
+	err = stmt.QueryRow(&orderID).Scan(&orderID, &latestStatus)
+	if err != nil {
+		log.Println("(CreateOrderStatus:ListMax:Exec)", err)
+		tx.Rollback()
+		return err
+	}
+
+	// prevents the creation of a status that's not valid
+	if latestStatus > os.Status.Value {
+		err = errors.New("cannot set order to previous status")
+		log.Println("(CreateOrderStatus:validationPrevious)", err)
+		tx.Rollback()
+		return err
+
+	} else if os.Status.Value != 9 && os.Status.Value != (latestStatus+1) {
+		err = errors.New(fmt.Sprintf("status order is not correct: got %d and should be %d", os.Status.Value, (latestStatus + 1)))
+		log.Println("(CreateOrderStatus:validationNext)", err)
+		tx.Rollback()
+		return err
+	}
+
+	query = app.SQLCache["orders_orderStatus_insert.sql"]
+	stmt, err = tx.Prepare(query)
 
 	if err != nil {
 		log.Println("(CreateOrderStatus:Prepare)", err)

@@ -81,23 +81,35 @@ func (s *service) Create(c echo.Context) error {
 		})
 	}
 
-	o, err := model.Get(id)
+	return s.Get(c)
+}
+
+// CreateOrderStatus creates a new status for an order
+func (s *service) ChangeOrderStatus(c echo.Context) error {
+
+	orderID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	statusID, _ := strconv.ParseInt(c.Param("status"), 10, 64)
+
+	Status, isValid := OrderStatusMap[statusID]
+	if !isValid {
+		return c.JSON(http.StatusNotFound, utils.MessageJSON{
+			Message: fmt.Sprintf("status informed is invalid"),
+			Value:   statusID,
+		})
+	}
+
+	os := OrderStatus{
+		Status: Status,
+	}
+
+	err := model.CreateOrderStatus(orderID, os, nil)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
-			Message: fmt.Sprintf("error searching created Order %d", id),
+			Message: fmt.Sprintf("error adding status ´%s´ to order %d", Status.Description, orderID),
 			Value:   err.Error(),
 		})
 	}
 
-	return c.JSON(http.StatusCreated, utils.MessageJSON{
-		Value: o,
-	})
-}
+	return s.Get(c)
 
-// CreateOrderStatus creates a new status for an order
-func CreateOrderStatus(orderID int64, os OrderStatus) {
-	err := model.CreateOrderStatus(orderID, os, nil)
-	if err != nil {
-		// do something later
-	}
 }

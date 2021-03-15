@@ -20,4 +20,9 @@ var (
 	OrderDispatched       = OrderStatusType{Value: 4, Description: "order-dispatched"}
 	OrderDelivered        = OrderStatusType{Value: 5, Description: "order-delivered"}
 	OrderCanceled         = OrderStatusType{Value: 9, Description: "order-canceled"}
+
+	OrderStatusMap = map[int64]OrderStatusType{
+		0: OrderCreated, 1: OrderConfirmed, 2: OrderInPreparation, 3: OrderReadyForDelivery,
+		4: OrderDispatched, 5: OrderDelivered, 9: OrderCanceled,
+	}
 )
