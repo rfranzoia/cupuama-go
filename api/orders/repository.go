@@ -12,11 +12,50 @@ import (
 
 var db = database.GetConnection()
 
-// List retrieves a list of all non-deleted orders
-func (*OrderItemsStatus) List(orderID int64) ([]OrderItemsStatus, error) {
+func (ois *OrderItemsStatus) ListOrderItemByOrderId(orderID int64) ([]OrderItems, error) {
+	var items []OrderItems
 
-	orderList := app.SQLCache["orders_list.sql"]
-	stmt, err := db.Prepare(orderList)
+	query := app.SQLCache["orders_orderItems_listByOrder.sql"]
+	stmt, err := db.Prepare(query)
+	if err != nil {
+		log.Println("(ListOrderItemByOrderId:Prepare)", err)
+		return make([]OrderItems, 0), err
+	}
+
+	defer stmt.Close()
+
+	rows, err := stmt.Query(orderID)
+	if err != nil {
+		log.Println("(ListOrderItemByOrderId:Query)", err)
+		return make([]OrderItems, 0), err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var oi OrderItems
+
+		if err := rows.Scan(&oi.ID, &oi.Product.ID, &oi.Product.Name, &oi.Fruit.ID, &oi.Fruit.Name, &oi.Quantity, &oi.UnitPrice); err != nil {
+			log.Println("(ListOrderItemByOrderId:Scan)", err)
+			return make([]OrderItems, 0), err
+		}
+
+		items = append(items, oi)
+	}
+
+	if err = rows.Err(); err != nil {
+		log.Println("(ListOrder:Rows)", err)
+		return make([]OrderItems, 0), err
+	}
+
+	return items, nil
+}
+
+// List retrieves a list of all non-deleted orders
+func (ois *OrderItemsStatus) List() ([]OrderItemsStatus, error) {
+
+	query := app.SQLCache["orders_list.sql"]
+	stmt, err := db.Prepare(query)
 	if err != nil {
 		log.Println("(ListOrder:Prepare)", err)
 		return nil, err
@@ -24,7 +63,7 @@ func (*OrderItemsStatus) List(orderID int64) ([]OrderItemsStatus, error) {
 
 	defer stmt.Close()
 
-	rows, err := stmt.Query(orderID, orderID)
+	rows, err := stmt.Query()
 	if err != nil {
 		log.Println("(ListOrder:Query)", err)
 		return nil, err
@@ -33,66 +72,35 @@ func (*OrderItemsStatus) List(orderID int64) ([]OrderItemsStatus, error) {
 	defer rows.Close()
 
 	var list []OrderItemsStatus
-	var items []OrderItems
-
-	var ois OrderItemsStatus
-	var currentOIS OrderItemsStatus
-	records := 0
 
 	for rows.Next() {
-		var oi OrderItems
+		var items []OrderItems
+		var order OrderItemsStatus
 
-		err := rows.Scan(&currentOIS.Order.ID, &currentOIS.Order.OrderDate, &currentOIS.Order.TotalPrice,
-			&currentOIS.OrderStatus.ID, &currentOIS.OrderStatus.Status.Value, &currentOIS.OrderStatus.StatusChangeDate, &currentOIS.OrderStatus.Status.Description,
-			&oi.ID, &oi.Product.ID, &oi.Product.Name, &oi.Fruit.ID, &oi.Fruit.Name, &oi.Quantity, &oi.UnitPrice)
-
+		err := rows.Scan(&order.Order.ID, &order.Order.OrderDate, &order.Order.TotalPrice,
+			&order.OrderStatus.ID, &order.OrderStatus.Status.Value, &order.OrderStatus.StatusChangeDate, &order.OrderStatus.Status.Description,
+			&order.Order.Audit.Deleted, &order.Order.Audit.DateCreated, &order.Order.Audit.DateUpdated)
 		if err != nil {
 			log.Println("(ListOrder:Scan)", err)
 			return nil, err
 		}
 
-		oi.Order = currentOIS.Order
-		items = append(items, oi)
-
-		// in other words, if is the first record
-		if ois.Order.ID == 0 {
-			ois.Order.ID = currentOIS.Order.ID
-			ois.Order.OrderDate = currentOIS.Order.OrderDate
-			ois.Order.TotalPrice = currentOIS.Order.TotalPrice
-			ois.OrderStatus = currentOIS.OrderStatus
-			ois.OrderStatus.Order = currentOIS.Order
-			records++
-
-		} else if ois.Order.ID != currentOIS.Order.ID {
-			ois.OrderItems = items
-			list = append(list, ois)
-
-			items = []OrderItems{}
-			ois = OrderItemsStatus{}
-
-			ois.Order.ID = currentOIS.Order.ID
-			ois.Order.OrderDate = currentOIS.Order.OrderDate
-			ois.Order.TotalPrice = currentOIS.Order.TotalPrice
-			ois.OrderStatus = currentOIS.OrderStatus
-			ois.OrderStatus.Order = currentOIS.Order
-
-			currentOIS = OrderItemsStatus{}
+		items, err = ois.ListOrderItemByOrderId(order.Order.ID)
+		if err != nil {
+			items = make([]OrderItems, 0)
 		}
 
+		order.OrderItems = items
+		list = append(list, order)
 	}
 
-	ois.OrderItems = items
-
-	list = append(list, ois)
-
-	if records == 0 {
-		log.Println("no records found")
+	if len(list) == 0 {
+		log.Println("no order records found")
 		err = errors.New("no records were found")
 		return nil, err
 	}
 
-	err = rows.Err()
-	if err != nil {
+	if err = rows.Err(); err != nil {
 		log.Println("(ListOrder:Rows)", err)
 		return nil, err
 	}
@@ -104,21 +112,40 @@ func (*OrderItemsStatus) List(orderID int64) ([]OrderItemsStatus, error) {
 // Get retrieves an order
 func (ois *OrderItemsStatus) Get(orderID int64) (OrderItemsStatus, error) {
 
-	if orderID <= 0 {
-		err := errors.New("cannot retrieve an order with a negative ID")
-		return OrderItemsStatus{}, err
-	}
-
-	orders, err := ois.List(orderID)
+	query := app.SQLCache["orders_get.sql"]
+	stmt, err := db.Prepare(query)
 	if err != nil {
-		return OrderItemsStatus{}, err
-
-	} else if len(orders) == 0 {
-		err := errors.New("couldn't find an order with the specified ID")
+		log.Println("(ListOrder:Prepare)", err)
 		return OrderItemsStatus{}, err
 	}
 
-	return orders[0], nil
+	defer stmt.Close()
+
+	var order OrderItemsStatus
+	var items []OrderItems
+
+	err = stmt.QueryRow(&orderID).Scan(&order.Order.ID, &order.Order.OrderDate, &order.Order.TotalPrice,
+		&order.OrderStatus.ID, &order.OrderStatus.Status.Value, &order.OrderStatus.StatusChangeDate, &order.OrderStatus.Status.Description,
+		&order.Order.Audit.Deleted, &order.Order.Audit.DateCreated, &order.Order.Audit.DateUpdated)
+	if err != nil {
+		log.Println("(ListOrder:QueryRow)", err)
+		return OrderItemsStatus{}, err
+	}
+
+	items, err = ois.ListOrderItemByOrderId(orderID)
+	if err != nil {
+		items = []OrderItems{}
+	}
+
+	order.OrderItems = items
+
+	if order.Order.ID == 0 {
+		log.Println("no order record(s) found")
+		err = errors.New("no order record(s) found")
+		return OrderItemsStatus{}, err
+	}
+
+	return order, nil
 }
 
 // Create creates a new Order with Items and Status
@@ -157,21 +184,16 @@ func (*OrderItemsStatus) Create(ois OrderItemsStatus) (OrderItemsStatus, error) 
 
 	// creates the first status: 0 - order-created
 	os := OrderStatus{
-		Order: Orders{
-			ID: ois.Order.ID,
-		},
 		Status: OrderCreated,
 	}
 
-	err = ois.CreateOrderStatus(os, tx)
-	if err != nil {
+	if err = ois.CreateOrderStatus(ois.Order.ID, os, tx); err != nil {
 		log.Println("(CreateOrderStatus:Exec)", err)
 		tx.Rollback()
 		return OrderItemsStatus{}, err
 	}
 
-	err = tx.Commit()
-	if err != nil {
+	if err = tx.Commit(); err != nil {
 		log.Println("(CreateOrder:Commit)", err)
 		return OrderItemsStatus{}, err
 	}
@@ -237,7 +259,7 @@ func (*OrderItemsStatus) CreateOrderItems(orderID int64, orderItems []OrderItems
 }
 
 // CreateOrderStatus creates a new Order Status for an order
-func (*OrderItemsStatus) CreateOrderStatus(os OrderStatus, tx *sql.Tx) error {
+func (*OrderItemsStatus) CreateOrderStatus(orderID int64, os OrderStatus, tx *sql.Tx) error {
 
 	var err error
 
@@ -256,9 +278,9 @@ func (*OrderItemsStatus) CreateOrderStatus(os OrderStatus, tx *sql.Tx) error {
 	}
 
 	if checkOrder {
-		orderExist := orderExists(os.Order.ID)
+		orderExist := orderExists(orderID)
 		if !orderExist {
-			err := fmt.Errorf("order %d doesn't exist", os.Order.ID)
+			err := fmt.Errorf("order %d doesn't exist", orderID)
 			log.Println("(CreateOrderStatus:GetOrder)", err)
 			tx.Rollback()
 			return err
@@ -281,7 +303,7 @@ func (*OrderItemsStatus) CreateOrderStatus(os OrderStatus, tx *sql.Tx) error {
 		}
 
 		var latestStatus int64
-		err = stmt.QueryRow(&os.Order.ID).Scan(&os.Order.ID, &latestStatus)
+		err = stmt.QueryRow(&orderID).Scan(&orderID, &latestStatus)
 		if err != nil {
 			log.Println("(CreateOrderStatus:ListMax:Exec)", err)
 			tx.Rollback()
@@ -314,7 +336,7 @@ func (*OrderItemsStatus) CreateOrderStatus(os OrderStatus, tx *sql.Tx) error {
 
 	defer stmt.Close()
 
-	err = stmt.QueryRow(os.Order.ID, os.Status.Value, os.Status.Description).Scan(&os.ID)
+	err = stmt.QueryRow(orderID, os.Status.Value, os.Status.Description).Scan(&os.ID)
 
 	if err != nil {
 		log.Println("(CreateOrderStatus:Exec)", err)
@@ -486,11 +508,10 @@ func (ois *OrderItemsStatus) CancelOrder(orderID int64) error {
 	}
 
 	os := OrderStatus{
-		Order:  order.Order,
 		Status: OrderCanceled,
 	}
 
-	err = ois.CreateOrderStatus(os, tx)
+	err = ois.CreateOrderStatus(orderID, os, tx)
 	if err != nil {
 		log.Println("(CancelOrder:CreateCancelStatus)", err)
 		return err

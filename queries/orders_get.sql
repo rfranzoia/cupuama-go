@@ -6,5 +6,5 @@ inner join (select os.* from (select order_id, max(status) max_status
 		                     from order_status 
 			                 group by order_id) mos
 	                         inner join order_status os on os.order_id = mos.order_id and os.status = mos.max_status) os on os.order_id = o.id
-where deleted = false
+where deleted = false and o.id = $1
 order by order_date desc, o.id asc

@@ -8,7 +8,6 @@ import (
 // OrderItems table definition
 type OrderItems struct {
 	ID        int64
-	Order     Orders
 	Product   products.Products
 	Fruit     fruits.Fruits
 	Quantity  int64

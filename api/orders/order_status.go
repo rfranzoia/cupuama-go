@@ -3,7 +3,6 @@ package orders
 // OrderStatus table definition
 type OrderStatus struct {
 	ID               int64
-	Order            Orders
 	Status           OrderStatusType
 	StatusChangeDate string
 }

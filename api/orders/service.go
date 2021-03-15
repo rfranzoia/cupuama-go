@@ -24,7 +24,7 @@ func NewOrderService(a *config.AppConfig) service {
 // List list all orders
 func (s *service) List(c echo.Context) error {
 
-	list, err := model.List(-1)
+	list, err := model.List()
 	if err != nil {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
 			Message: fmt.Sprintf("error listing Orders"),
@@ -67,8 +67,8 @@ func Create(ois OrderItemsStatus) {
 }
 
 // CreateOrderStatus creates a new status for an order
-func CreateOrderStatus(os OrderStatus) {
-	err := model.CreateOrderStatus(os, nil)
+func CreateOrderStatus(orderID int64, os OrderStatus) {
+	err := model.CreateOrderStatus(orderID, os, nil)
 	if err != nil {
 		// do something later
 	}

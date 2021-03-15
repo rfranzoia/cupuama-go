@@ -65,7 +65,7 @@ func setupOrderItemsStatus() {
 }
 
 func TestList(t *testing.T) {
-	orders, err := ois.List(-1)
+	orders, err := ois.List()
 	if err != nil {
 		t.Errorf("error while listing orders %v", err)
 
@@ -75,6 +75,9 @@ func TestList(t *testing.T) {
 }
 
 func TestGetFoundOrder(t *testing.T) {
+	// create the order and store its id
+
+	// attempt to get the order created
 	order, err := ois.Get(34)
 	if err != nil {
 		t.Errorf("error while retrieving the order %v", err)
@@ -123,11 +126,10 @@ func TestCreateOrderStatus(t *testing.T) {
 	}
 
 	os := OrderStatus{
-		Order:  order.Order,
 		Status: OrderConfirmed,
 	}
 
-	err = ois.CreateOrderStatus(os, nil)
+	err = ois.CreateOrderStatus(order.Order.ID, os, nil)
 	if err != nil {
 		t.Errorf("fail create order status for TestCreateOrderStatus %v", err)
 	}
