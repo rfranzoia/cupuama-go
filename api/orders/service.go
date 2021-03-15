@@ -81,7 +81,17 @@ func (s *service) Create(c echo.Context) error {
 		})
 	}
 
-	return s.Get(c)
+	o, err := model.Get(id)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, utils.MessageJSON{
+			Message: fmt.Sprintf("error searching Order %d", id),
+			Value:   err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, utils.MessageJSON{
+		Value: o,
+	})
 }
 
 // CreateOrderStatus creates a new status for an order

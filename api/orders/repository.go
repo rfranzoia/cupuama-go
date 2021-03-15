@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/rfranzoia/cupuama-go/database"
 )
@@ -172,8 +173,9 @@ func (ois *OrderItemsStatus) Create(order *OrderItemsStatus) (int64, error) {
 	for _, item := range order.OrderItems {
 		totalPrice += (item.UnitPrice * float64(item.Quantity))
 	}
+	var orderID int64
 
-	err = stmt.QueryRow(&totalPrice).Scan(&order.Order.ID)
+	err = stmt.QueryRow(&totalPrice).Scan(&orderID)
 	if err != nil {
 		log.Println("(CreateOrder:Exec)", err)
 		tx.Rollback()
@@ -181,7 +183,7 @@ func (ois *OrderItemsStatus) Create(order *OrderItemsStatus) (int64, error) {
 	}
 
 	// creates all order items
-	err = ois.CreateOrderItems(order.Order.ID, order.OrderItems, tx)
+	err = ois.CreateOrderItems(orderID, order.OrderItems, tx)
 	if err != nil {
 		log.Println("(CreateOrderItems:Exec)", err)
 		tx.Rollback()
@@ -193,7 +195,7 @@ func (ois *OrderItemsStatus) Create(order *OrderItemsStatus) (int64, error) {
 		Status: OrderCreated,
 	}
 
-	if err = ois.CreateOrderStatus(order.Order.ID, os, tx); err != nil {
+	if err = ois.CreateOrderStatus(orderID, os, tx); err != nil {
 		log.Println("(CreateOrderStatus:Exec)", err)
 		tx.Rollback()
 		return -1, err
@@ -204,7 +206,7 @@ func (ois *OrderItemsStatus) Create(order *OrderItemsStatus) (int64, error) {
 		return -1, err
 	}
 
-	return order.Order.ID, nil
+	return orderID, nil
 }
 
 // CreateOrderItems insert a list of order items
@@ -312,29 +314,35 @@ func (*OrderItemsStatus) CreateOrderStatus(orderID int64, os OrderStatus, tx *sq
 	var latestStatus int64
 	err = stmt.QueryRow(&orderID).Scan(&orderID, &latestStatus)
 	if err != nil {
-		log.Println("(CreateOrderStatus:ListMax:Exec)", err)
-		tx.Rollback()
-		return err
+		if !strings.Contains(err.Error(), "no rows in result set") {
+			log.Println("(CreateOrderStatus:ListMax:Exec)", err)
+			tx.Rollback()
+			return err
+		} else {
+			latestStatus = -1
+		}
 	}
 
-	// prevents the creation of a status that's not valid
-	if latestStatus > os.Status.Value {
-		err = errors.New("cannot set order to previous status")
-		log.Println("(CreateOrderStatus:validationPrevious)", err)
-		tx.Rollback()
-		return err
+	if localCommit {
+		// prevents the creation of a status that's not valid
+		if latestStatus > os.Status.Value {
+			err = errors.New("cannot set order to previous status")
+			log.Println("(CreateOrderStatus:validationPrevious)", err)
+			tx.Rollback()
+			return err
 
-	} else if os.Status.Value != 9 && os.Status.Value != (latestStatus+1) {
-		err = errors.New(fmt.Sprintf("status order is not correct: got %d and should be %d", os.Status.Value, (latestStatus + 1)))
-		log.Println("(CreateOrderStatus:validationNext)", err)
-		tx.Rollback()
-		return err
+		} else if os.Status.Value != 9 && os.Status.Value != (latestStatus+1) {
+			err = errors.New(fmt.Sprintf("status order is not correct: got %d and should be %d", os.Status.Value, (latestStatus + 1)))
+			log.Println("(CreateOrderStatus:validationNext)", err)
+			tx.Rollback()
+			return err
 
-	} else if os.Status.Value == 9 && latestStatus >= 4 {
-		err = errors.New(fmt.Sprintf("cannot cancel order %d after status ´%s´", orderID, OrderStatusMap[4].Description))
-		log.Println("(CreateOrderStatus:validationCancel)", err)
-		tx.Rollback()
-		return err
+		} else if os.Status.Value == 9 && latestStatus >= 4 {
+			err = errors.New(fmt.Sprintf("cannot cancel order %d after status ´%s´", orderID, OrderStatusMap[4].Description))
+			log.Println("(CreateOrderStatus:validationCancel)", err)
+			tx.Rollback()
+			return err
+		}
 	}
 
 	query = app.SQLCache["orders_orderStatus_insert.sql"]
