@@ -13,45 +13,6 @@ import (
 
 var db = database.GetConnection()
 
-func (ois *OrderItemsStatus) ListOrderItemByOrderId(orderID int64) ([]OrderItems, error) {
-	var items []OrderItems
-
-	query := app.SQLCache["orders_orderItems_listByOrder.sql"]
-	stmt, err := db.Prepare(query)
-	if err != nil {
-		log.Println("(ListOrderItemByOrderId:Prepare)", err)
-		return make([]OrderItems, 0), err
-	}
-
-	defer stmt.Close()
-
-	rows, err := stmt.Query(orderID)
-	if err != nil {
-		log.Println("(ListOrderItemByOrderId:Query)", err)
-		return make([]OrderItems, 0), err
-	}
-
-	defer rows.Close()
-
-	for rows.Next() {
-		var oi OrderItems
-
-		if err := rows.Scan(&oi.ID, &oi.Product.ID, &oi.Product.Name, &oi.Fruit.ID, &oi.Fruit.Name, &oi.Quantity, &oi.UnitPrice); err != nil {
-			log.Println("(ListOrderItemByOrderId:Scan)", err)
-			return make([]OrderItems, 0), err
-		}
-
-		items = append(items, oi)
-	}
-
-	if err = rows.Err(); err != nil {
-		log.Println("(ListOrder:Rows)", err)
-		return make([]OrderItems, 0), err
-	}
-
-	return items, nil
-}
-
 // List retrieves a list of all non-deleted orders
 func (ois *OrderItemsStatus) List() ([]OrderItemsStatus, error) {
 
@@ -110,7 +71,7 @@ func (ois *OrderItemsStatus) List() ([]OrderItemsStatus, error) {
 
 }
 
-// Get retrieves an order
+// Get retrieves an non-deleted order and its items
 func (ois *OrderItemsStatus) Get(orderID int64) (OrderItemsStatus, error) {
 
 	query := app.SQLCache["orders_get.sql"]
@@ -161,12 +122,13 @@ func (ois *OrderItemsStatus) Create(order *OrderItemsStatus) (int64, error) {
 	// creates the order
 	insertQuery := app.SQLCache["orders_insert.sql"]
 	stmt, err := tx.Prepare(insertQuery)
-	defer stmt.Close()
-
 	if err != nil {
 		log.Println("(CreateOrder:Prepare)", err)
 		return -1, err
+
 	}
+
+	defer stmt.Close()
 
 	// calculates the total price before inserting the order
 	var totalPrice = 0.00
@@ -332,13 +294,13 @@ func (*OrderItemsStatus) CreateOrderStatus(orderID int64, os OrderStatus, tx *sq
 			return err
 
 		} else if os.Status.Value != 9 && os.Status.Value != (latestStatus+1) {
-			err = errors.New(fmt.Sprintf("status order is not correct: got %d and should be %d", os.Status.Value, (latestStatus + 1)))
+			err = fmt.Errorf("status order is not correct: got %d and should be %d", os.Status.Value, (latestStatus + 1))
 			log.Println("(CreateOrderStatus:validationNext)", err)
 			tx.Rollback()
 			return err
 
 		} else if os.Status.Value == 9 && latestStatus >= 4 {
-			err = errors.New(fmt.Sprintf("cannot cancel order %d after status ´%s´", orderID, OrderStatusMap[4].Description))
+			err = fmt.Errorf("cannot cancel order %d after status ´%s´", orderID, OrderStatusMap[4].Description)
 			log.Println("(CreateOrderStatus:validationCancel)", err)
 			tx.Rollback()
 			return err
@@ -365,6 +327,12 @@ func (*OrderItemsStatus) CreateOrderStatus(orderID int64, os OrderStatus, tx *sq
 	}
 
 	if localCommit {
+		if err = updateOrderAudit(orderID, tx); err != nil {
+			log.Println("(CreateOrderStatus:updateDateUpdated)", err)
+			tx.Rollback()
+			return err
+		}
+
 		err = tx.Commit()
 		if err != nil {
 			log.Println("(CreateOrderStatus:Commit)", err)
@@ -376,11 +344,51 @@ func (*OrderItemsStatus) CreateOrderStatus(orderID int64, os OrderStatus, tx *sq
 
 }
 
-// DeleteOrderItems remove Items from an order
-func (ois *OrderItemsStatus) DeleteOrderItems(orderID int64, oi []OrderItems) error {
+// ListOrderItemByOrderId retrives a slice with the OrderItems of an Order
+func (ois *OrderItemsStatus) ListOrderItemByOrderId(orderID int64) ([]OrderItems, error) {
+	var items []OrderItems
 
-	if len(oi) == 0 {
-		log.Println("(DeleteOrderItems:NoItemsToDelete)", oi)
+	query := app.SQLCache["orders_orderItems_listByOrder.sql"]
+	stmt, err := db.Prepare(query)
+	if err != nil {
+		log.Println("(ListOrderItemByOrderId:Prepare)", err)
+		return make([]OrderItems, 0), err
+	}
+
+	defer stmt.Close()
+
+	rows, err := stmt.Query(orderID)
+	if err != nil {
+		log.Println("(ListOrderItemByOrderId:Query)", err)
+		return make([]OrderItems, 0), err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var oi OrderItems
+
+		if err := rows.Scan(&oi.ID, &oi.Product.ID, &oi.Product.Name, &oi.Fruit.ID, &oi.Fruit.Name, &oi.Quantity, &oi.UnitPrice); err != nil {
+			log.Println("(ListOrderItemByOrderId:Scan)", err)
+			return make([]OrderItems, 0), err
+		}
+
+		items = append(items, oi)
+	}
+
+	if err = rows.Err(); err != nil {
+		log.Println("(ListOrder:Rows)", err)
+		return make([]OrderItems, 0), err
+	}
+
+	return items, nil
+}
+
+// DeleteOrderItems remove Items from an order
+func (ois *OrderItemsStatus) DeleteOrderItems(orderID int64, orderItems []OrderItems) error {
+
+	if len(orderItems) == 0 {
+		log.Println("(DeleteOrderItems:NoItemsToDelete)", orderItems)
 		return errors.New("no order item was informed to be deleted")
 	}
 
@@ -400,24 +408,17 @@ func (ois *OrderItemsStatus) DeleteOrderItems(orderID int64, oi []OrderItems) er
 	}
 
 	// delete the selected items
-	for _, item := range oi {
+	for _, item := range orderItems {
 		// check if the item belongs to the provided order
-		query := app.SQLCache["orders_orderItems_selectByIdAndOrderId.sql"]
-		stmt, err := tx.Prepare(query)
-		if err != nil {
-			log.Println("(DeleteOrderItems:deleteItem:ItemDoesntBelongToOder)", err)
-			return err
-		}
-
-		if err = stmt.QueryRow(&orderID, &item.ID).Scan(&item.ID); err != nil {
-			log.Println("(DeleteOrderItems:deleteItem:ItemDoesntBelongToOder)", err)
-			err = errors.New(fmt.Sprintf("order item %d doesn't belong to order %d", item.ID, orderID))
+		if belongsTo := doesItemBelongsToOrder(orderID, item); !belongsTo {
+			err = fmt.Errorf("order item %d doesn't belong to order %d", item.ID, orderID)
+			log.Println("(DeleteOrderItems:deleteItem:Prepare)", err)
 			return err
 		}
 
 		// actually delete de valid item
-		query = app.SQLCache["orders_orderItems_delete.sql"]
-		stmt, err = tx.Prepare(query)
+		query := app.SQLCache["orders_orderItems_delete.sql"]
+		stmt, err := tx.Prepare(query)
 		if err != nil {
 			log.Println("(DeleteOrderItems:deleteItem:Prepare)", err)
 			return err
@@ -425,13 +426,14 @@ func (ois *OrderItemsStatus) DeleteOrderItems(orderID int64, oi []OrderItems) er
 		_, err = stmt.Exec(&item.ID)
 		if err != nil {
 			log.Println("(DeleteOrderItems:deleteItem:Exec)", err)
+			tx.Rollback()
 			return err
 		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		log.Println("(CreateOrderStatus:Commit)", err)
+		log.Println("(DeleteOrderItems:Commit)", err)
 		return err
 	}
 
@@ -544,6 +546,13 @@ func (ois *OrderItemsStatus) CancelOrder(orderID int64) error {
 	err = ois.CreateOrderStatus(orderID, os, tx)
 	if err != nil {
 		log.Println("(CancelOrder:CreateCancelStatus)", err)
+		tx.Rollback()
+		return err
+	}
+
+	if err = updateOrderAudit(orderID, tx); err != nil {
+		log.Println("(CancelOrder:UpdateDateUpdated)", err)
+		tx.Rollback()
 		return err
 	}
 
@@ -551,6 +560,51 @@ func (ois *OrderItemsStatus) CancelOrder(orderID int64) error {
 	if err != nil {
 		log.Println("(CancelOrder:Commit)", err)
 		return err
+	}
+
+	return nil
+}
+
+func updateOrderAudit(orderID int64, tx *sql.Tx) error {
+	var err error
+
+	localCommit := false
+
+	// uses the transaction from calling method if one has it
+	if tx == nil {
+		ctx := context.Background()
+		tx, err = db.BeginTx(ctx, nil)
+		if err != nil {
+			log.Println("(updateOrderAudit:CreateTransaction)", err)
+			return err
+		}
+		localCommit = true
+	}
+
+	// update the date_upated on order
+	query := app.SQLCache["orders_updateDateUpdated.sql"]
+	stmt, err := tx.Prepare(query)
+	if err != nil {
+		log.Println("(updateOrderAudit:Prepare)", err)
+		return err
+	}
+
+	_, err = stmt.Exec(&orderID)
+	if err != nil {
+		log.Println("(updateOrderAudit:exec)", err)
+		if localCommit {
+			tx.Rollback()
+		}
+		return err
+	}
+
+	// finish everything up
+	if localCommit {
+		err = tx.Commit()
+		if err != nil {
+			log.Println("(updateOrderAudit:Commit)", err)
+			return err
+		}
 	}
 
 	return nil
@@ -589,4 +643,20 @@ func orderExists(orderID int64) bool {
 		return false
 	}
 	return order.ID != 0
+}
+
+func doesItemBelongsToOrder(orderID int64, orderItem OrderItems) bool {
+	query := app.SQLCache["orders_orderItems_selectByIdAndOrderId.sql"]
+	stmt, err := db.Prepare(query)
+	if err != nil {
+		log.Println("(doesItemBelongsToOrder:Prepare)", err)
+		return false
+	}
+
+	if err = stmt.QueryRow(&orderID, &orderItem.ID).Scan(&orderItem.ID); err != nil {
+		log.Println("(doesItemBelongsToOrder:QueryRow)", err)
+		return false
+	}
+
+	return true
 }

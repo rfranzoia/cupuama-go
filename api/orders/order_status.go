@@ -27,17 +27,6 @@ var (
 	}
 )
 
-func (os *OrderStatus) equals(other OrderStatus) bool {
-	if os.ID == other.ID || os.Status.Value == other.Status.Value {
-		return true
-	}
-	return false
-}
-
 func (ost *OrderStatusType) equals(other OrderStatusType) bool {
-	if ost.Value == other.Value {
-		return true
-	}
-
-	return false
+	return ost.Value == other.Value
 }

@@ -28,7 +28,7 @@ func (s *service) List(c echo.Context) error {
 	list, err := model.List()
 	if err != nil {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
-			Message: fmt.Sprintf("error listing Orders"),
+			Message: "error listing Orders",
 			Value:   err.Error(),
 		})
 	}
@@ -103,7 +103,7 @@ func (s *service) ChangeOrderStatus(c echo.Context) error {
 	Status, isValid := OrderStatusMap[statusID]
 	if !isValid {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
-			Message: fmt.Sprintf("status informed is invalid"),
+			Message: "status informed is invalid",
 			Value:   statusID,
 		})
 	}
@@ -140,6 +140,7 @@ func (s *service) CancelOrder(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, utils.MessageJSON{
 		Message: "Order successfully Canceled",
+		Value:   "",
 	})
 }
 
@@ -164,5 +165,6 @@ func (s *service) DeleteOrderItems(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, utils.MessageJSON{
 		Message: "Order Items successfully deleted",
+		Value:   "",
 	})
 }
