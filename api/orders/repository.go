@@ -238,7 +238,7 @@ func (ois *OrderItemsStatus) CreateOrderItems(orderID int64, orderItems []OrderI
 		}
 	}
 
-	insertQuery := app.SQLCache["orders_orderItem_insert.sql"]
+	insertQuery := app.SQLCache["orders_orderItems_insert.sql"]
 	for _, item := range orderItems {
 		stmt, err := tx.Prepare(insertQuery)
 		if err != nil {
@@ -377,11 +377,11 @@ func (*OrderItemsStatus) CreateOrderStatus(orderID int64, os OrderStatus, tx *sq
 }
 
 // DeleteOrderItems remove Items from an order
-func (ois *OrderItemsStatus) DeleteOrderItems(orderID int64, oi ...OrderItems) error {
+func (ois *OrderItemsStatus) DeleteOrderItems(orderID int64, oi []OrderItems) error {
 
 	if len(oi) == 0 {
 		log.Println("(DeleteOrderItems:NoItemsToDelete)", oi)
-		return nil
+		return errors.New("no order item was informed to be deleted")
 	}
 
 	var err error
@@ -393,29 +393,39 @@ func (ois *OrderItemsStatus) DeleteOrderItems(orderID int64, oi ...OrderItems) e
 		return err
 	}
 
-	order, err := ois.Get(orderID)
-	if err != nil {
-		err := fmt.Errorf("order %d doesn't exist", orderID)
-		log.Println("(DeleteOrderItems:GetOrder)", err)
+	if !orderExists(orderID) {
+		err = errors.New("order doesnt exists")
+		log.Println("(DeleteOrderItems:OrderDoesntExists)", err)
 		return err
 	}
 
-	// delete the selected items if the item exists in the order
+	// delete the selected items
 	for _, item := range oi {
-		for _, orderItem := range order.OrderItems {
-			if orderItem.Product.ID == item.Product.ID && orderItem.Fruit.ID == item.Fruit.ID {
-				query := app.SQLCache["orders_orderItems_deleteOne.sql"]
-				stmt, err := tx.Prepare(query)
-				if err != nil {
-					log.Println("(DeleteOrderItems:deleteItem:Prepare)", err)
-					return err
-				}
-				_, err = stmt.Exec(&orderID, &item.Product.ID, &item.Fruit.ID)
-				if err != nil {
-					log.Println("(DeleteOrderItems:deleteItem:Exec)", err)
-					return err
-				}
-			}
+		// check if the item belongs to the provided order
+		query := app.SQLCache["orders_orderItems_selectByIdAndOrderId.sql"]
+		stmt, err := tx.Prepare(query)
+		if err != nil {
+			log.Println("(DeleteOrderItems:deleteItem:ItemDoesntBelongToOder)", err)
+			return err
+		}
+
+		if err = stmt.QueryRow(&orderID, &item.ID).Scan(&item.ID); err != nil {
+			log.Println("(DeleteOrderItems:deleteItem:ItemDoesntBelongToOder)", err)
+			err = errors.New(fmt.Sprintf("order item %d doesn't belong to order %d", item.ID, orderID))
+			return err
+		}
+
+		// actually delete de valid item
+		query = app.SQLCache["orders_orderItems_delete.sql"]
+		stmt, err = tx.Prepare(query)
+		if err != nil {
+			log.Println("(DeleteOrderItems:deleteItem:Prepare)", err)
+			return err
+		}
+		_, err = stmt.Exec(&item.ID)
+		if err != nil {
+			log.Println("(DeleteOrderItems:deleteItem:Exec)", err)
+			return err
 		}
 	}
 

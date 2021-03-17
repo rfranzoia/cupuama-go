@@ -65,7 +65,7 @@ func (s *service) Create(c echo.Context) error {
 	order := new(OrderItemsStatus)
 
 	if err := c.Bind(order); err != nil {
-		log.Println("(CreateFruit:Bind)", err)
+		log.Println("(CreateOrder:Bind)", err)
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error creating Order",
 			Value:   err.Error(),
@@ -74,7 +74,7 @@ func (s *service) Create(c echo.Context) error {
 
 	id, err := model.Create(order)
 	if err != nil || id <= 0 {
-		log.Println("(CreateFruit:Create)", err)
+		log.Println("(CreateOrder:Create)", err)
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error creating Order",
 			Value:   err.Error(),
@@ -140,5 +140,29 @@ func (s *service) CancelOrder(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, utils.MessageJSON{
 		Message: "Order successfully Canceled",
+	})
+}
+
+func (s *service) DeleteOrderItems(c echo.Context) error {
+	orderID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	var ois OrderItemsStatus
+
+	if err := c.Bind(&ois); err != nil {
+		log.Println("(DeleteOrderItems:Bind)", err)
+		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
+			Message: "Error removing order items Order",
+			Value:   err.Error(),
+		})
+	}
+
+	if err := model.DeleteOrderItems(orderID, ois.OrderItems); err != nil {
+		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
+			Message: "Error removing order items Order",
+			Value:   err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, utils.MessageJSON{
+		Message: "Order Items successfully deleted",
 	})
 }

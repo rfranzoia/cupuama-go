@@ -180,32 +180,31 @@ func TestUpdateOrder(t *testing.T) {
 
 func TestDeleteItemFromOrder(t *testing.T) {
 
-	orderItem := OrderItems{
-		Product: products.Products{
-			ID: 3,
-		},
-		Fruit: fruits.Fruits{
-			ID: 5,
-		},
-		Quantity:  10,
-		UnitPrice: 7.5,
-	}
-
+	// create the order and keep its' id
 	id, err := ois.Create(&testOrder)
 	if err != nil {
 		t.Errorf("(TestDeleteItemFromOrder) error creating an order %v", err)
 	}
 
-	err = ois.DeleteOrderItems(id, orderItem)
+	// retrieve the order
+	order, err := ois.Get(id)
 	if err != nil {
+		t.Errorf("(TestDeleteItemFromOrder) order was not created properly")
+	}
+
+	itemToDelete := []OrderItems{
+		order.OrderItems[0],
+	}
+
+	if err = ois.DeleteOrderItems(id, itemToDelete); err != nil {
 		t.Errorf("(TestDeleteItemFromOrder) error removing order item(s) %v", err)
 	}
 
-	order, err := ois.Get(id)
-	if err != nil {
+	// retrive the order again to check if the first item was indeed removed
+	if order, err := ois.Get(id); err != nil {
 		t.Errorf("(TestDeleteItemFromOrder) after delete OrderItem order.Get() has failed %v", err)
 
-	} else if len(order.OrderItems) != 1 {
+	} else if len(order.OrderItems) > 1 {
 		t.Errorf("(TestDeleteItemFromOrder) delete order item has failed %v", err)
 	}
 }
