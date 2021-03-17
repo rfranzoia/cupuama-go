@@ -118,6 +118,7 @@ func (ois *OrderItemsStatus) Create(order *OrderItemsStatus) (int64, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer tx.Rollback()
 
 	// creates the order
 	insertQuery := app.SQLCache["orders_insert.sql"]
@@ -186,6 +187,7 @@ func (ois *OrderItemsStatus) CreateOrderItems(orderID int64, orderItems []OrderI
 			log.Println("(CreateOrderItem:CreateTransaction)", err)
 			return err
 		}
+		defer tx.Rollback()
 		localCommit = true
 		checkOrder = true
 	}
@@ -243,6 +245,7 @@ func (*OrderItemsStatus) CreateOrderStatus(orderID int64, os OrderStatus, tx *sq
 			log.Println("(CreateOrderStatus:CreateTransaction)", err)
 			return err
 		}
+		defer tx.Rollback()
 		localCommit = true
 		checkOrder = true
 	}
@@ -400,6 +403,7 @@ func (ois *OrderItemsStatus) DeleteOrderItems(orderID int64, orderItems []OrderI
 		log.Println("(DeleteOrderItems:CreateTransaction)", err)
 		return err
 	}
+	defer tx.Rollback()
 
 	if !orderExists(orderID) {
 		err = errors.New("order doesnt exists")
@@ -451,9 +455,9 @@ func (ois *OrderItemsStatus) UpdateOrder(orderID int64, oi []OrderItems) error {
 		log.Println("(UpdateOrder:CreateTransaction)", err)
 		return err
 	}
+	defer tx.Rollback()
 
-	orderIsValid := orderExists(orderID) && orderHasStatus(orderID, OrderCreated)
-	if !orderIsValid {
+	if exists := orderExists(orderID) && orderHasStatus(orderID, OrderCreated); !exists {
 		err := fmt.Errorf("order %d doesn't exist", orderID)
 		log.Println("(UpdateOrder:GetOrder)", err)
 		tx.Rollback()
@@ -500,6 +504,7 @@ func (ois *OrderItemsStatus) CancelOrder(orderID int64) error {
 		log.Println("(UpdateOrder:CreateTransaction)", err)
 		return err
 	}
+	defer tx.Rollback()
 
 	if !orderExists(orderID) {
 		err := errors.New("order doesn't exists")
@@ -578,6 +583,7 @@ func updateOrderAudit(orderID int64, tx *sql.Tx) error {
 			log.Println("(updateOrderAudit:CreateTransaction)", err)
 			return err
 		}
+		defer tx.Rollback()
 		localCommit = true
 	}
 
