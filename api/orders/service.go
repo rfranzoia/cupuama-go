@@ -89,7 +89,7 @@ func (s *service) Create(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, utils.MessageJSON{
+	return c.JSON(http.StatusCreated, utils.MessageJSON{
 		Value: o,
 	})
 }
