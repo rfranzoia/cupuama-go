@@ -45,7 +45,7 @@ func (s *service) Get(c echo.Context) error {
 
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
-	o, err := model.Get(id)
+	order, err := model.Get(id)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
 			Message: fmt.Sprintf("error searching Order %d", id),
@@ -54,7 +54,7 @@ func (s *service) Get(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, utils.MessageJSON{
-		Value: o,
+		Value: order,
 	})
 
 }
@@ -167,4 +167,26 @@ func (s *service) DeleteOrderItems(c echo.Context) error {
 		Message: "Order Items successfully deleted",
 		Value:   "",
 	})
+}
+
+func (s *service) UpdateOrder(c echo.Context) error {
+	orderID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	var order OrderItemsStatus
+
+	if err := c.Bind(&order); err != nil {
+		log.Println("(UpdateOrder:Bind)", err)
+		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
+			Message: "Error updating order",
+			Value:   err.Error(),
+		})
+	}
+
+	if err := model.UpdateOrder(orderID, order.OrderItems); err != nil {
+		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
+			Message: "Error updating order",
+			Value:   err.Error(),
+		})
+	}
+
+	return s.Get(c)
 }

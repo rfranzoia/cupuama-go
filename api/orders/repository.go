@@ -251,8 +251,7 @@ func (*OrderItemsStatus) CreateOrderStatus(orderID int64, os OrderStatus, tx *sq
 	}
 
 	if checkOrder {
-		orderExist := orderExists(orderID)
-		if !orderExist {
+		if orderExist := orderExists(orderID); !orderExist {
 			err := fmt.Errorf("order %d doesn't exist", orderID)
 			log.Println("(CreateOrderStatus:GetOrder)", err)
 			tx.Rollback()
@@ -330,8 +329,22 @@ func (*OrderItemsStatus) CreateOrderStatus(orderID int64, os OrderStatus, tx *sq
 	}
 
 	if localCommit {
-		if err = updateOrderAudit(orderID, tx); err != nil {
-			log.Println("(CreateOrderStatus:updateDateUpdated)", err)
+		query = app.SQLCache["orders_orderItems_sumByOrder.sql"]
+		stmt, err = tx.Prepare(query)
+		if err != nil {
+			log.Println("(CreateOrdertatus:sumItemsPrice:prepare)", err)
+			tx.Rollback()
+			return err
+		}
+		var totalPrice float64
+		err = stmt.QueryRow(&orderID).Scan(&totalPrice)
+		if err != nil {
+			log.Println("(CreateOrdertatus:sumItemsPrice:QueryScan)", err)
+			tx.Rollback()
+			return err
+		}
+		if err = updateOrderAudit(orderID, totalPrice, tx); err != nil {
+			log.Println("(CreateOrdertatus:updateDateUpdated)", err)
 			tx.Rollback()
 			return err
 		}
@@ -471,7 +484,6 @@ func (ois *OrderItemsStatus) UpdateOrder(orderID int64, oi []OrderItems) error {
 		log.Println("(UpdateOrder:deleteAll:Prepare)", err)
 		return err
 	}
-
 	_, err = stmt.Exec(&orderID)
 	if err != nil {
 		log.Println("(UpdateOrder:deleteAll:exec)", err)
@@ -483,6 +495,18 @@ func (ois *OrderItemsStatus) UpdateOrder(orderID int64, oi []OrderItems) error {
 	if err != nil {
 		log.Println("(UpdateOrder:GetOrder)", err)
 		tx.Rollback()
+		return err
+	}
+
+	// recalculate TotalPrice
+	var totalPrice = 0.00
+	for _, item := range oi {
+		totalPrice += (item.UnitPrice * float64(item.Quantity))
+	}
+
+	if err = updateOrderAudit(orderID, totalPrice, tx); err != nil {
+		tx.Rollback()
+		log.Println("(UpdateOrder:UpdateOrderAudit)", err)
 		return err
 	}
 
@@ -555,7 +579,7 @@ func (ois *OrderItemsStatus) CancelOrder(orderID int64) error {
 		return err
 	}
 
-	if err = updateOrderAudit(orderID, tx); err != nil {
+	if err = updateOrderAudit(orderID, 0.00, tx); err != nil {
 		log.Println("(CancelOrder:UpdateDateUpdated)", err)
 		tx.Rollback()
 		return err
@@ -570,7 +594,7 @@ func (ois *OrderItemsStatus) CancelOrder(orderID int64) error {
 	return nil
 }
 
-func updateOrderAudit(orderID int64, tx *sql.Tx) error {
+func updateOrderAudit(orderID int64, totalPrice float64, tx *sql.Tx) error {
 	var err error
 
 	localCommit := false
@@ -588,14 +612,14 @@ func updateOrderAudit(orderID int64, tx *sql.Tx) error {
 	}
 
 	// update the date_upated on order
-	query := app.SQLCache["orders_updateDateUpdated.sql"]
+	query := app.SQLCache["orders_updateTotalPrice.sql"]
 	stmt, err := tx.Prepare(query)
 	if err != nil {
 		log.Println("(updateOrderAudit:Prepare)", err)
 		return err
 	}
 
-	_, err = stmt.Exec(&orderID)
+	_, err = stmt.Exec(&totalPrice, &orderID)
 	if err != nil {
 		log.Println("(updateOrderAudit:exec)", err)
 		if localCommit {

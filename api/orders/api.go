@@ -23,8 +23,6 @@ func (api *api) RegisterRouting(g *echo.Group) {
 	gro.PUT("/:id/status/:status", api.Service.ChangeOrderStatus)
 	gro.PUT("/:id/cancel", api.Service.CancelOrder)
 	gro.DELETE("/:id/items", api.Service.DeleteOrderItems)
-
-	// gu.PUT("/:id", api.Service.Update)
-	// gu.DELETE("/:id", api.Service.Delete)
+	gro.PUT("/:id", api.Service.UpdateOrder)
 
 }
