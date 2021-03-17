@@ -493,7 +493,7 @@ func (ois *OrderItemsStatus) UpdateOrder(orderID int64, oi []OrderItems) error {
 	// insert the new provided items into the order
 	err = ois.CreateOrderItems(orderID, oi, tx)
 	if err != nil {
-		log.Println("(UpdateOrder:GetOrder)", err)
+		log.Println("(UpdateOrder:CreateOrderItems)", err)
 		tx.Rollback()
 		return err
 	}
