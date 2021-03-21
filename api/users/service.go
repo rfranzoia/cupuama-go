@@ -20,6 +20,48 @@ func NewUserService(a *config.AppConfig) service {
 	return service{}
 }
 
+// Login validates an user
+func (s *service) Login(c echo.Context) error {
+
+	user := new(Users)
+
+	if err := c.Bind(user); err != nil {
+		return c.JSON(http.StatusUnauthorized, utils.MessageJSON{
+			Message: "invalid username/password",
+			Value:   err.Error(),
+		})
+	}
+
+	u, err := model.Get(user.Login)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, utils.MessageJSON{
+			Message: "invalid username/password",
+			Value:   err.Error(),
+		})
+	}
+
+	if u.Login != user.Login || u.Password != user.Password {
+		return c.JSON(http.StatusUnauthorized, utils.MessageJSON{
+			Message: "invalid username/password",
+			Value:   nil,
+		})
+	}
+
+	token, err := utils.CreateJwtToken(user.Login, user.Person.FirstName)
+	if err != nil {
+		log.Println("Erro ao criar Token JWT")
+		return c.JSON(http.StatusInternalServerError, utils.MessageJSON{
+			Message: "Erro ao criar Token JWT",
+			Value:   err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, utils.MessageJSON{
+		Message: "login successful!",
+		Value:   token,
+	})
+}
+
 // List retrieves all users
 func (s *service) List(c echo.Context) error {
 	list, err := model.List()

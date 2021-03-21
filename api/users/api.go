@@ -24,3 +24,10 @@ func (api *api) RegisterRouting(g *echo.Group) {
 	gru.DELETE("/:login", api.Service.Delete)
 
 }
+
+func (api *api) RegisterLoginRouting(g *echo.Group) {
+
+	// register login separatedly
+	g.POST("/v2/login", api.Service.Login)
+
+}

@@ -2,6 +2,7 @@ package users
 
 import (
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/rfranzoia/cupuama-go/database"
@@ -104,6 +105,8 @@ func (*Users) Create(user *Users) error {
 		log.Println("(CreateUser:Prepare)", err)
 		return err
 	}
+
+	fmt.Println(user)
 
 	defer stmt.Close()
 

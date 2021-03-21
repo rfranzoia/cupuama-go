@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
+
 	"github.com/google/uuid"
 )
 
@@ -21,6 +23,9 @@ const YMDFormat = "20060102"
 
 // DateTimeLong Date format for Year/Month/Day Hour:Minute equivalent to YYYY-MM-DD HH:MM
 const DateTimeLong = "2006-01-02 15:04"
+
+// SecretPass ...
+const SecretPass = "s3cr3tT0k3nP455"
 
 // GetMD5Hash Returns the MD5 hash code for a string
 func GetMD5Hash(text string) string {
@@ -38,8 +43,8 @@ func NewUUID(keepHyphen ...bool) string {
 
 // MessageJSON Default return values for services
 type MessageJSON struct {
-	Message string      `json:"message,ommitempty"`
-	Value   interface{} `json:"value,ommitempty"`
+	Message string      `json:"message,omitempty"`
+	Value   interface{} `json:"value,omitempty"`
 }
 
 // AuthLog log de autorizacao por token
@@ -113,4 +118,21 @@ func CreateSQLCache(queriesLocation ...string) (map[string]string, error) {
 	}
 
 	return myCache, nil
+}
+
+func CreateJwtToken(login, name string) (string, error) {
+	claim := jwt.StandardClaims{
+		Id:        login,
+		Issuer:    name,
+		ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
+	}
+
+	rawToken := jwt.NewWithClaims(jwt.SigningMethodHS512, claim)
+	token, err := rawToken.SignedString([]byte(SecretPass))
+
+	if err != nil {
+		return "", err
+	}
+
+	return token, nil
 }
