@@ -91,7 +91,7 @@ func (*Fruits) List() ([]Fruits, error) {
 		empty := []Fruits{}
 		return empty, err
 	} else if len(list) == 0 {
-		err = errors.New("No fruits were found")
+		err = errors.New("no fruits were found")
 		log.Println("(ListFruit:Result)", err)
 		empty := []Fruits{}
 		return empty, err

@@ -26,12 +26,13 @@ func (s *service) Login(c echo.Context) error {
 	user := new(Users)
 
 	if err := c.Bind(user); err != nil {
-		return c.JSON(http.StatusUnauthorized, utils.MessageJSON{
+		log.Println("(Login:Bind)", err)
+		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "invalid username/password",
 			Value:   err.Error(),
 		})
 	}
-
+	log.Println("user:", user)
 	u, err := model.Get(user.Login)
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, utils.MessageJSON{
@@ -39,7 +40,7 @@ func (s *service) Login(c echo.Context) error {
 			Value:   err.Error(),
 		})
 	}
-
+	log.Println("u:", u)
 	if u.Login != user.Login || u.Password != user.Password {
 		return c.JSON(http.StatusUnauthorized, utils.MessageJSON{
 			Message: "invalid username/password",

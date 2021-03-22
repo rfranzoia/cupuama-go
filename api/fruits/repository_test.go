@@ -5,8 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/rfranzoia/cupuama-go/config"
 	"github.com/rfranzoia/cupuama-go/utils"
 )
@@ -37,12 +35,6 @@ func init() {
 		Initials: rndInit,
 		Harvest:  "All Year",
 	}
-}
-
-func generateRandomLogin() string {
-	uuidWithHyphen := uuid.New()
-	uuid := strings.Replace(uuidWithHyphen.String(), "-", "", -1)
-	return uuid
 }
 
 func TestCreate(t *testing.T) {

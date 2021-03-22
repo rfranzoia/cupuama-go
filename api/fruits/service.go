@@ -26,7 +26,7 @@ func (s *service) List(c echo.Context) error {
 	list, err := model.List()
 	if err != nil {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
-			Message: fmt.Sprintf("Error searching Fruits"),
+			Message: "Error searching Fruits",
 			Value:   err.Error(),
 		})
 	}
