@@ -27,7 +27,7 @@ func (api *api) RegisterRouting(g *echo.Group) {
 	grf.PUT("/:id", api.Service.Update)
 	grf.DELETE("/:id", api.Service.Delete)
 
-	grf.OPTIONS("/:id", options)
+	//grf.OPTIONS("/:id", options)
 }
 
 func options(c echo.Context) error {

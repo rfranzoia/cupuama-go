@@ -119,8 +119,8 @@ func (s *service) Update(c echo.Context) error {
 			Value:   err.Error(),
 		})
 	}
-
 	fruit.ID = id
+	fmt.Println("parsed fruit", fruit)
 	_, err := model.Update(fruit)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
