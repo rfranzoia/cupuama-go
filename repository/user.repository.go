@@ -5,9 +5,9 @@ import (
 	"cupuama-go/domain"
 	"cupuama-go/logger"
 	"cupuama-go/utils"
-	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/jmoiron/sqlx"
 )
 
 type UserRepository interface {
@@ -19,7 +19,7 @@ type UserRepository interface {
 }
 
 type UserRepositoryDB struct {
-	db  *sql.DB
+	db  *sqlx.DB
 	app *config.AppConfig
 }
 

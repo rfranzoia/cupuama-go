@@ -4,7 +4,6 @@ import (
 	"cupuama-go/config"
 	"cupuama-go/domain"
 	"cupuama-go/logger"
-	"database/sql"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -17,7 +16,7 @@ type ProductRepository interface {
 }
 
 type ProductRepositoryDB struct {
-	db  *sql.DB
+	db  *sqlx.DB
 	app *config.AppConfig
 }
 

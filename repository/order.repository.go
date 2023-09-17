@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/jmoiron/sqlx"
 	"golang.org/x/net/context"
 	"strings"
 )
@@ -23,7 +24,7 @@ type OrderRepository interface {
 }
 
 type OrderRepositoryDB struct {
-	db  *sql.DB
+	db  *sqlx.DB
 	app *config.AppConfig
 }
 
