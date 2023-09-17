@@ -1,6 +1,6 @@
-package fruits
+package domain
 
-import "github.com/rfranzoia/cupuama-go/utils"
+import "cupuama-go/utils"
 
 // Fruits definition for fruits tables
 type Fruits struct {
@@ -10,5 +10,3 @@ type Fruits struct {
 	Harvest  string `json:"harvest,omitempty"`
 	utils.Audit
 }
-
-var model *Fruits

@@ -1,4 +1,4 @@
-package users
+package utils
 
 // Person basic person information
 type Person struct {

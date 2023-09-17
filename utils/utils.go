@@ -2,10 +2,10 @@ package utils
 
 import (
 	"crypto/md5"
+	"cupuama-go/logger"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
-	"log"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -53,7 +53,7 @@ type MessageJSON struct {
 // 	token := user.(*jwt.Token)
 // 	claims := token.Claims.(jwt.MapClaims)
 
-// 	log.Println("Func:", funcName, "Id:", claims["jti"], "Issuer:", claims["iss"])
+// 	logger.Log.Info("Func:", funcName, "Id:", claims["jti"], "Issuer:", claims["iss"])
 // }
 
 // JSONTime Formato de data/hora para JSON
@@ -99,19 +99,19 @@ func CreateSQLCache(queriesLocation ...string) (map[string]string, error) {
 	for _, queryPath := range queriesLocation {
 		queries, err = filepath.Glob(queryPath)
 		if err != nil {
-			log.Fatal(fmt.Sprintf("cannot read queries from path %s", queryPath), err)
+			logger.Log.Fatal(fmt.Sprintf("cannot read queries from path %s", queryPath, err.Error()))
 		}
 	}
 
 	if len(queries) == 0 {
-		log.Fatal("no queries were found")
+		logger.Log.Fatal("No queries were found to load the cache")
 	}
 
 	for _, query := range queries {
 		name := filepath.Base(query)
-		sql, err := ioutil.ReadFile(query)
+		sql, err := os.ReadFile(query)
 		if err != nil {
-			log.Println(err)
+			logger.Log.Error(err.Error())
 			return myCache, err
 		}
 		myCache[name] = string(sql)

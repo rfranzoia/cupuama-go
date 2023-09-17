@@ -1,12 +1,10 @@
 package config
 
-import (
-	"log"
-)
+import "database/sql"
 
 // AppConfig holds the application config
 type AppConfig struct {
 	UseCache bool
 	SQLCache map[string]string
-	InfoLog  *log.Logger
+	DB       *sql.DB
 }

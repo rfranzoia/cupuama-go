@@ -1,34 +1,37 @@
 package main
 
 import (
-	"log"
+	"cupuama-go/api"
+	"cupuama-go/config"
+	"cupuama-go/database"
+	"cupuama-go/logger"
+	"cupuama-go/utils"
+
 	"net/http"
 
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
-	"github.com/rfranzoia/cupuama-go/api"
-	"github.com/rfranzoia/cupuama-go/config"
-	"github.com/rfranzoia/cupuama-go/database"
-	"github.com/rfranzoia/cupuama-go/utils"
+	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 )
 
 func main() {
-	defer database.GetConnection().Close()
+	logger.Log.Info("Stating application server")
+	db := database.GetConnection()
+	defer db.Close()
 
 	var app config.AppConfig
 
 	// loads all queries into the application config cache
 	qc, err := utils.CreateSQLCache()
 	if err != nil {
-		log.Fatal("cannot create queries cache")
+		logger.Log.Fatal("cannot create queries cache")
 	}
 
 	app.SQLCache = qc
 	app.UseCache = false
+	app.DB = db
 
 	e := ServerConfig(&app)
 	e.Logger.Fatal(e.Start(":8080"))
-
 }
 
 func ServerConfig(app *config.AppConfig) *echo.Echo {

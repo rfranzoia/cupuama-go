@@ -1,29 +1,32 @@
-package fruits
+package service
 
 import (
+	"cupuama-go/config"
+	"cupuama-go/domain"
+	"cupuama-go/logger"
+	"cupuama-go/repository"
+	"cupuama-go/utils"
 	"fmt"
-	"log"
+	"github.com/labstack/echo"
 	"net/http"
 	"strconv"
-
-	"github.com/labstack/echo/v4"
-	"github.com/rfranzoia/cupuama-go/config"
-	"github.com/rfranzoia/cupuama-go/utils"
 )
 
-type service struct {
+type FruitService struct {
+	app        *config.AppConfig
+	repository repository.FruitRepository
 }
 
-var app *config.AppConfig
-
-func NewFruitService(a *config.AppConfig) service {
-	app = a
-	return service{}
+func NewFruitService(a *config.AppConfig) FruitService {
+	return FruitService{
+		app:        a,
+		repository: repository.NewFruitRepository(a),
+	}
 }
 
 // List retrieves all fruits
-func (s *service) List(c echo.Context) error {
-	list, err := model.List()
+func (fs *FruitService) List(c echo.Context) error {
+	list, err := fs.repository.List()
 	if err != nil {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
 			Message: "Error searching Fruits",
@@ -38,11 +41,11 @@ func (s *service) List(c echo.Context) error {
 }
 
 // Get retrieves an fruit by id
-func (s *service) Get(c echo.Context) error {
+func (fs *FruitService) Get(c echo.Context) error {
 
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
-	u, err := model.Get(id)
+	u, err := fs.repository.Get(id)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
 			Message: fmt.Sprintf("Error searching Fruit %d", id),
@@ -56,19 +59,19 @@ func (s *service) Get(c echo.Context) error {
 }
 
 // Create add a new fruit
-func (s *service) Create(c echo.Context) error {
+func (fs *FruitService) Create(c echo.Context) error {
 
-	fruit := new(Fruits)
+	fruit := new(domain.Fruits)
 
 	if err := c.Bind(fruit); err != nil {
-		log.Println("(CreateFruit:Bind)", err)
+		logger.Log.Info("(CreateFruit:Bind)" + err.Error())
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error creating fruit",
 			Value:   err.Error(),
 		})
 	}
 
-	id, err := model.Create(fruit)
+	id, err := fs.repository.Create(fruit)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error creating fruit",
@@ -76,7 +79,7 @@ func (s *service) Create(c echo.Context) error {
 		})
 	}
 
-	u, err := model.Get(id)
+	u, err := fs.repository.Get(id)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error creating fruit",
@@ -90,11 +93,11 @@ func (s *service) Create(c echo.Context) error {
 }
 
 // Delete removes an fruit by id
-func (s *service) Delete(c echo.Context) error {
+func (fs *FruitService) Delete(c echo.Context) error {
 
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
-	if err := model.Delete(id); err != nil {
+	if err := fs.repository.Delete(id); err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error removing fruit",
 			Value:   err.Error(),
@@ -107,13 +110,13 @@ func (s *service) Delete(c echo.Context) error {
 }
 
 // Update changes the data of an fruit
-func (s *service) Update(c echo.Context) error {
+func (fs *FruitService) Update(c echo.Context) error {
 
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-	fruit := new(Fruits)
+	fruit := new(domain.Fruits)
 
 	if err := c.Bind(fruit); err != nil {
-		log.Println("(Update:Bind)", err)
+		logger.Log.Info("(Update:Bind)" + err.Error())
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error modifying fruit data",
 			Value:   err.Error(),
@@ -121,7 +124,7 @@ func (s *service) Update(c echo.Context) error {
 	}
 	fruit.ID = id
 	fmt.Println("parsed fruit", fruit)
-	_, err := model.Update(fruit)
+	_, err := fs.repository.Update(fruit)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error modifying fruit data",
@@ -129,7 +132,7 @@ func (s *service) Update(c echo.Context) error {
 		})
 	}
 
-	f, err := model.Get(id)
+	f, err := fs.repository.Get(id)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error retrieving modified fruit",

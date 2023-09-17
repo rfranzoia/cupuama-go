@@ -1,46 +1,51 @@
-package users
+package service
 
 import (
+	"cupuama-go/config"
+	"cupuama-go/domain"
+	"cupuama-go/logger"
+	"cupuama-go/repository"
+	"cupuama-go/utils"
 	"fmt"
-	"log"
 	"net/http"
 
-	"github.com/labstack/echo/v4"
-	"github.com/rfranzoia/cupuama-go/config"
-	"github.com/rfranzoia/cupuama-go/utils"
+	"github.com/labstack/echo"
 )
 
-type service struct {
+type UserService struct {
+	app        *config.AppConfig
+	repository repository.UserRepository
 }
 
-var app *config.AppConfig
-
-func NewUserService(a *config.AppConfig) service {
-	app = a
-	return service{}
+func NewUserService(a *config.AppConfig) UserService {
+	return UserService{
+		app:        a,
+		repository: repository.NewUserRepository(a),
+	}
 }
 
 // Login validates an user
-func (s *service) Login(c echo.Context) error {
+func (s *UserService) Login(c echo.Context) error {
 
-	user := new(Users)
+	user := new(domain.Users)
 
 	if err := c.Bind(user); err != nil {
-		log.Println("(Login:Bind)", err)
+		logger.Log.Info("(Login:Bind)" + err.Error())
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "invalid username/password",
 			Value:   err.Error(),
 		})
 	}
-	log.Println("user:", user)
-	u, err := model.Get(user.Login)
+
+	logger.Log.Info("user: " + user.Login)
+	u, err := s.repository.GetByLogin(user.Login)
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, utils.MessageJSON{
 			Message: "invalid username/password",
 			Value:   err.Error(),
 		})
 	}
-	log.Println("u:", u)
+	logger.Log.Info("u: " + u.Login)
 	if u.Login != user.Login || u.Password != user.Password {
 		return c.JSON(http.StatusUnauthorized, utils.MessageJSON{
 			Message: "invalid username/password",
@@ -50,7 +55,7 @@ func (s *service) Login(c echo.Context) error {
 
 	token, err := utils.CreateJwtToken(user.Login, user.Person.FirstName)
 	if err != nil {
-		log.Println("Erro ao criar Token JWT")
+		logger.Log.Info("Erro ao criar Token JWT")
 		return c.JSON(http.StatusInternalServerError, utils.MessageJSON{
 			Message: "Erro ao criar Token JWT",
 			Value:   err.Error(),
@@ -64,8 +69,8 @@ func (s *service) Login(c echo.Context) error {
 }
 
 // List retrieves all users
-func (s *service) List(c echo.Context) error {
-	list, err := model.List()
+func (s *UserService) List(c echo.Context) error {
+	list, err := s.repository.FindAll()
 	if err != nil {
 		return nil
 	}
@@ -77,10 +82,10 @@ func (s *service) List(c echo.Context) error {
 }
 
 // Get retrieves an user by login
-func (s *service) Get(c echo.Context) error {
+func (s *UserService) GetByLogin(c echo.Context) error {
 	login := c.Param("login")
 
-	u, err := model.Get(login)
+	u, err := s.repository.GetByLogin(login)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
 			Message: fmt.Sprintf("Error searching User %s", login),
@@ -94,19 +99,19 @@ func (s *service) Get(c echo.Context) error {
 }
 
 // Create add a new user
-func (s *service) Create(c echo.Context) error {
+func (s *UserService) Create(c echo.Context) error {
 
-	user := new(Users)
+	user := new(domain.Users)
 
 	if err := c.Bind(user); err != nil {
-		log.Println("(CreateUser:Bind)", err)
+		logger.Log.Info("(CreateUser:Bind)" + err.Error())
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error creating user",
 			Value:   err.Error(),
 		})
 	}
 
-	if err := model.Create(user); err != nil {
+	if err := s.repository.Create(user); err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error creating user",
 			Value:   err.Error(),
@@ -114,7 +119,7 @@ func (s *service) Create(c echo.Context) error {
 	}
 
 	login := user.Login
-	u, err := model.Get(login)
+	u, err := s.repository.GetByLogin(login)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error creating user",
@@ -128,11 +133,11 @@ func (s *service) Create(c echo.Context) error {
 }
 
 // Delete removes an user by login
-func (s *service) Delete(c echo.Context) error {
+func (s *UserService) DeleteByLogin(c echo.Context) error {
 
 	login := c.Param("login")
 
-	if err := model.Delete(login); err != nil {
+	if err := s.repository.DeleteByLogin(login); err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error removing user",
 			Value:   err.Error(),
@@ -145,13 +150,13 @@ func (s *service) Delete(c echo.Context) error {
 }
 
 // Update changes the data of an user
-func (s *service) Update(c echo.Context) error {
+func (s *UserService) UpdateByLogin(c echo.Context) error {
 
 	login := c.Param("login")
-	user := new(Users)
+	user := new(domain.Users)
 
 	if err := c.Bind(user); err != nil {
-		log.Println("(Update:Bind)", err)
+		logger.Log.Info("(Update:Bind)" + err.Error())
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error modifying user data",
 			Value:   err.Error(),
@@ -159,7 +164,7 @@ func (s *service) Update(c echo.Context) error {
 	}
 
 	user.Login = login
-	_, err := model.Update(user)
+	_, err := s.repository.UpdateByLogin(user)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error modifying user data",
@@ -167,7 +172,7 @@ func (s *service) Update(c echo.Context) error {
 		})
 	}
 
-	u, err := model.Get(login)
+	u, err := s.repository.GetByLogin(login)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error retrieving modified user",

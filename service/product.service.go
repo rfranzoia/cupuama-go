@@ -1,29 +1,32 @@
-package products
+package service
 
 import (
+	"cupuama-go/config"
+	"cupuama-go/domain"
+	"cupuama-go/logger"
+	"cupuama-go/repository"
+	"cupuama-go/utils"
 	"fmt"
-	"log"
+	"github.com/labstack/echo"
 	"net/http"
 	"strconv"
-
-	"github.com/labstack/echo/v4"
-	"github.com/rfranzoia/cupuama-go/config"
-	"github.com/rfranzoia/cupuama-go/utils"
 )
 
-type service struct {
+type ProductService struct {
+	app        *config.AppConfig
+	repository repository.ProductRepository
 }
 
-var app *config.AppConfig
-
-func NewProductService(a *config.AppConfig) service {
-	app = a
-	return service{}
+func NewProductService(a *config.AppConfig) ProductService {
+	return ProductService{
+		app:        a,
+		repository: repository.NewProductRepository(a),
+	}
 }
 
 // List retrieves all products
-func (s *service) List(c echo.Context) error {
-	list, err := model.List()
+func (ps *ProductService) List(c echo.Context) error {
+	list, err := ps.repository.List()
 	if err != nil {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
 			Message: "Error searching Products",
@@ -38,11 +41,11 @@ func (s *service) List(c echo.Context) error {
 }
 
 // Get retrieves an product by id
-func (s *service) Get(c echo.Context) error {
+func (ps *ProductService) Get(c echo.Context) error {
 
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
-	u, err := model.Get(id)
+	u, err := ps.repository.Get(id)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
 			Message: fmt.Sprintf("Error searching Product %d", id),
@@ -56,19 +59,19 @@ func (s *service) Get(c echo.Context) error {
 }
 
 // Create add a new product
-func (s *service) Create(c echo.Context) error {
+func (ps *ProductService) Create(c echo.Context) error {
 
-	product := new(Products)
+	product := new(domain.Products)
 
 	if err := c.Bind(product); err != nil {
-		log.Println("(CreateProduct:Bind)", err)
+		logger.Log.Info("(CreateProduct:Bind)" + err.Error())
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error creating product",
 			Value:   err.Error(),
 		})
 	}
 
-	id, err := model.Create(product)
+	id, err := ps.repository.Create(product)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error creating product",
@@ -76,7 +79,7 @@ func (s *service) Create(c echo.Context) error {
 		})
 	}
 
-	u, err := model.Get(id)
+	u, err := ps.repository.Get(id)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error creating product",
@@ -90,11 +93,11 @@ func (s *service) Create(c echo.Context) error {
 }
 
 // Delete removes an product by id
-func (s *service) Delete(c echo.Context) error {
+func (ps *ProductService) Delete(c echo.Context) error {
 
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
-	if err := model.Delete(id); err != nil {
+	if err := ps.repository.Delete(id); err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error removing product",
 			Value:   err.Error(),
@@ -107,13 +110,13 @@ func (s *service) Delete(c echo.Context) error {
 }
 
 // Update changes the data of an product
-func (s *service) Update(c echo.Context) error {
+func (ps *ProductService) Update(c echo.Context) error {
 
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-	product := new(Products)
+	product := new(domain.Products)
 
 	if err := c.Bind(product); err != nil {
-		log.Println("(Update:Bind)", err)
+		logger.Log.Info("(Update:Bind)" + err.Error())
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error modifying product data",
 			Value:   err.Error(),
@@ -121,7 +124,7 @@ func (s *service) Update(c echo.Context) error {
 	}
 
 	product.ID = id
-	_, err := model.Update(product)
+	_, err := ps.repository.Update(product)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error modifying product data",
@@ -129,7 +132,7 @@ func (s *service) Update(c echo.Context) error {
 		})
 	}
 
-	f, err := model.Get(id)
+	f, err := ps.repository.Get(id)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error retrieving modified product",

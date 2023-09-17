@@ -1,13 +1,11 @@
-package users
+package domain
 
-import "github.com/rfranzoia/cupuama-go/utils"
+import "cupuama-go/utils"
 
 // Users definition for users tables
 type Users struct {
 	Login    string `json:"login"`
 	Password string `json:"password"`
-	Person
+	utils.Person
 	utils.Audit
 }
-
-var model *Users

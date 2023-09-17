@@ -1,6 +1,6 @@
-package products
+package domain
 
-import "github.com/rfranzoia/cupuama-go/utils"
+import "cupuama-go/utils"
 
 // Products definition for products tables
 type Products struct {
@@ -9,5 +9,3 @@ type Products struct {
 	Unit string `json:"unit"`
 	utils.Audit
 }
-
-var model *Products

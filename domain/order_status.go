@@ -1,4 +1,4 @@
-package orders
+package domain
 
 // OrderStatus table definition
 type OrderStatus struct {
@@ -27,6 +27,6 @@ var (
 	}
 )
 
-func (ost *OrderStatusType) equals(other OrderStatusType) bool {
+func (ost *OrderStatusType) Equals(other OrderStatusType) bool {
 	return ost.Value == other.Value
 }

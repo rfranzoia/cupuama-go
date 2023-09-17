@@ -1,6 +1,8 @@
-package orders
+package domain
 
-import "github.com/rfranzoia/cupuama-go/utils"
+import (
+	"cupuama-go/utils"
+)
 
 // Orders table definition
 type Orders struct {
@@ -16,5 +18,3 @@ type OrderItemsStatus struct {
 	OrderStatus OrderStatus
 	OrderItems  []OrderItems
 }
-
-var model *OrderItemsStatus

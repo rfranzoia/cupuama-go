@@ -1,31 +1,34 @@
-package orders
+package service
 
 import (
+	"cupuama-go/config"
+	"cupuama-go/domain"
+	"cupuama-go/logger"
+	"cupuama-go/repository"
+	"cupuama-go/utils"
 	"fmt"
-	"log"
+	"github.com/labstack/echo"
 	"net/http"
 	"strconv"
-
-	"github.com/labstack/echo/v4"
-	"github.com/rfranzoia/cupuama-go/config"
-	"github.com/rfranzoia/cupuama-go/utils"
 )
 
-type service struct {
+type OrderService struct {
+	app        *config.AppConfig
+	repository repository.OrderRepository
 }
 
-var app *config.AppConfig
-
 // NewOrderAPI setups the configuration for orders
-func NewOrderService(a *config.AppConfig) service {
-	app = a
-	return service{}
+func NewOrderService(a *config.AppConfig) OrderService {
+	return OrderService{
+		app:        a,
+		repository: repository.NewOrderRepository(a),
+	}
 }
 
 // List list all orders
-func (s *service) List(c echo.Context) error {
+func (os *OrderService) List(c echo.Context) error {
 
-	list, err := model.List()
+	list, err := os.repository.List()
 	if err != nil {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
 			Message: "error listing Orders",
@@ -41,11 +44,11 @@ func (s *service) List(c echo.Context) error {
 }
 
 // Get retrive an order by its ID
-func (s *service) Get(c echo.Context) error {
+func (os *OrderService) Get(c echo.Context) error {
 
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
-	order, err := model.Get(id)
+	order, err := os.repository.Get(id)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
 			Message: fmt.Sprintf("error searching Order %d", id),
@@ -60,28 +63,28 @@ func (s *service) Get(c echo.Context) error {
 }
 
 // Create creates an order
-func (s *service) Create(c echo.Context) error {
+func (os *OrderService) Create(c echo.Context) error {
 
-	order := new(OrderItemsStatus)
+	order := new(domain.OrderItemsStatus)
 
 	if err := c.Bind(order); err != nil {
-		log.Println("(CreateOrder:Bind)", err)
+		logger.Log.Info("(CreateOrder:Bind) " + err.Error())
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error creating Order",
 			Value:   err.Error(),
 		})
 	}
 
-	id, err := model.Create(order)
+	id, err := os.repository.Create(order)
 	if err != nil || id <= 0 {
-		log.Println("(CreateOrder:Create)", err)
+		logger.Log.Info("(CreateOrder:Create)" + err.Error())
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error creating Order",
 			Value:   err.Error(),
 		})
 	}
 
-	o, err := model.Get(id)
+	o, err := os.repository.Get(id)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
 			Message: fmt.Sprintf("error searching Order %d", id),
@@ -95,12 +98,12 @@ func (s *service) Create(c echo.Context) error {
 }
 
 // CreateOrderStatus creates a new status for an order
-func (s *service) ChangeOrderStatus(c echo.Context) error {
+func (os *OrderService) ChangeOrderStatus(c echo.Context) error {
 
 	orderID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 	statusID, _ := strconv.ParseInt(c.Param("status"), 10, 64)
 
-	Status, isValid := OrderStatusMap[statusID]
+	Status, isValid := domain.OrderStatusMap[statusID]
 	if !isValid {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
 			Message: "status informed is invalid",
@@ -108,30 +111,30 @@ func (s *service) ChangeOrderStatus(c echo.Context) error {
 		})
 	}
 
-	if Status.equals(OrderCanceled) {
-		return s.CancelOrder(c)
+	if Status.Equals(domain.OrderCanceled) {
+		return os.CancelOrder(c)
 	}
 
 	// if changing to OrderCanceled, then just call the appropriate CancelOrder method
-	os := OrderStatus{
+	status := domain.OrderStatus{
 		Status: Status,
 	}
 
-	if err := model.CreateOrderStatus(orderID, os, nil); err != nil {
+	if err := os.repository.CreateOrderStatus(orderID, status, nil); err != nil {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
 			Message: fmt.Sprintf("error adding status ´%s´ to order %d", Status.Description, orderID),
 			Value:   err.Error(),
 		})
 	}
 
-	return s.Get(c)
+	return os.Get(c)
 
 }
 
-func (s *service) CancelOrder(c echo.Context) error {
+func (os *OrderService) CancelOrder(c echo.Context) error {
 	orderID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
-	if err := model.CancelOrder(orderID); err != nil {
+	if err := os.repository.CancelOrder(orderID); err != nil {
 		return c.JSON(http.StatusNotFound, utils.MessageJSON{
 			Message: fmt.Sprintf("error canceling order %d", orderID),
 			Value:   err.Error(),
@@ -144,19 +147,19 @@ func (s *service) CancelOrder(c echo.Context) error {
 	})
 }
 
-func (s *service) DeleteOrderItems(c echo.Context) error {
+func (os *OrderService) DeleteOrderItems(c echo.Context) error {
 	orderID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-	var ois OrderItemsStatus
+	var ois domain.OrderItemsStatus
 
 	if err := c.Bind(&ois); err != nil {
-		log.Println("(DeleteOrderItems:Bind)", err)
+		logger.Log.Info("(DeleteOrderItems:Bind)" + err.Error())
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error removing order items Order",
 			Value:   err.Error(),
 		})
 	}
 
-	if err := model.DeleteOrderItems(orderID, ois.OrderItems); err != nil {
+	if err := os.repository.DeleteOrderItems(orderID, ois.OrderItems); err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error removing order items Order",
 			Value:   err.Error(),
@@ -169,24 +172,24 @@ func (s *service) DeleteOrderItems(c echo.Context) error {
 	})
 }
 
-func (s *service) UpdateOrder(c echo.Context) error {
+func (os *OrderService) UpdateOrder(c echo.Context) error {
 	orderID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-	var order OrderItemsStatus
+	var order domain.OrderItemsStatus
 
 	if err := c.Bind(&order); err != nil {
-		log.Println("(UpdateOrder:Bind)", err)
+		logger.Log.Info("(UpdateOrder:Bind)" + err.Error())
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error updating order",
 			Value:   err.Error(),
 		})
 	}
 
-	if err := model.UpdateOrder(orderID, order.OrderItems); err != nil {
+	if err := os.repository.UpdateOrder(orderID, order.OrderItems); err != nil {
 		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
 			Message: "Error updating order",
 			Value:   err.Error(),
 		})
 	}
 
-	return s.Get(c)
+	return os.Get(c)
 }
