@@ -138,7 +138,8 @@ func (or *OrderRepositoryDB) Create(order *domain.OrderItemsStatus) (int64, erro
 	ctx := context.Background()
 	tx, err := or.db.BeginTx(ctx, nil)
 	if err != nil {
-		logger.Log.Fatal(err.Error())
+		logger.Log.Error(err.Error())
+		return -1, err
 	}
 	defer tx.Rollback()
 

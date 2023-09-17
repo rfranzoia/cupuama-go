@@ -28,10 +28,7 @@ func NewFruitService(a *config.AppConfig) FruitService {
 func (fs *FruitService) List(c echo.Context) error {
 	list, err := fs.repository.List()
 	if err != nil {
-		return c.JSON(http.StatusNotFound, utils.MessageJSON{
-			Message: "Error searching Fruits",
-			Value:   err.Error(),
-		})
+		return c.JSON(err.Code, err)
 	}
 	defer c.Request().Body.Close()
 
@@ -47,10 +44,7 @@ func (fs *FruitService) Get(c echo.Context) error {
 
 	u, err := fs.repository.Get(id)
 	if err != nil {
-		return c.JSON(http.StatusNotFound, utils.MessageJSON{
-			Message: fmt.Sprintf("Error searching Fruit %d", id),
-			Value:   err.Error(),
-		})
+		return c.JSON(err.Code, err)
 	}
 
 	return c.JSON(http.StatusOK, utils.MessageJSON{
@@ -73,18 +67,12 @@ func (fs *FruitService) Create(c echo.Context) error {
 
 	id, err := fs.repository.Create(fruit)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
-			Message: "Error creating fruit",
-			Value:   err.Error(),
-		})
+		return c.JSON(err.Code, err)
 	}
 
 	u, err := fs.repository.Get(id)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
-			Message: "Error creating fruit",
-			Value:   err.Error(),
-		})
+		return c.JSON(err.Code, err)
 	}
 
 	return c.JSON(http.StatusCreated, utils.MessageJSON{
@@ -98,10 +86,7 @@ func (fs *FruitService) Delete(c echo.Context) error {
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
 	if err := fs.repository.Delete(id); err != nil {
-		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
-			Message: "Error removing fruit",
-			Value:   err.Error(),
-		})
+		return c.JSON(err.Code, err)
 	}
 
 	return c.JSON(http.StatusOK, utils.MessageJSON{
@@ -126,18 +111,12 @@ func (fs *FruitService) Update(c echo.Context) error {
 	fmt.Println("parsed fruit", fruit)
 	_, err := fs.repository.Update(fruit)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
-			Message: "Error modifying fruit data",
-			Value:   err.Error(),
-		})
+		return c.JSON(err.Code, err)
 	}
 
 	f, err := fs.repository.Get(id)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, utils.MessageJSON{
-			Message: "Error retrieving modified fruit",
-			Value:   err.Error(),
-		})
+		return c.JSON(err.Code, err)
 	}
 
 	return c.JSON(http.StatusCreated, utils.MessageJSON{
