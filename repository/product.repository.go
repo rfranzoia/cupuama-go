@@ -8,11 +8,11 @@ import (
 )
 
 type ProductRepository interface {
+	Create(product *domain.Products) (int64, error)
 	Get(id int64) (domain.Products, error)
 	List() ([]domain.Products, error)
-	Create(product *domain.Products) (int64, error)
-	Delete(id int64) error
 	Update(product *domain.Products) (domain.Products, error)
+	Delete(id int64) error
 }
 
 type ProductRepositoryDB struct {
@@ -90,19 +90,8 @@ func (pr *ProductRepositoryDB) List() ([]domain.Products, error) {
 // Create inserts a new product into the database and returns the new ID
 func (pr *ProductRepositoryDB) Create(product *domain.Products) (int64, error) {
 
-	stmt, err := pr.db.Prepare(
-		"insert into products (name, unit) " +
-			"values ($1, $2) returning id")
-
-	if err != nil {
-		logger.Log.Info("(CreateProduct:Prepare)" + err.Error())
-		return -1, err
-	}
-
-	defer stmt.Close()
-
-	err = stmt.QueryRow(product.Name,
-		product.Unit).Scan(&product.ID)
+	insertQuery := pr.app.SQLCache["products_insert.sql"]
+	err := pr.db.QueryRow(insertQuery, product.Name, product.Unit).Scan(&product.ID)
 
 	if err != nil {
 		logger.Log.Info("(CreateProduct:Exec)" + err.Error())
@@ -110,54 +99,6 @@ func (pr *ProductRepositoryDB) Create(product *domain.Products) (int64, error) {
 	}
 
 	return product.ID, nil
-
-}
-
-// Delete removes the product with the specified login from the database
-func (pr *ProductRepositoryDB) Delete(id int64) error {
-
-	_, err := pr.Get(id)
-	if err != nil {
-		logger.Log.Info("(DeleteProduct:Get) Product doesn't exist")
-		return err
-	}
-
-	stmt, err := pr.db.Prepare(
-		"delete from products where id = $1")
-
-	if err != nil {
-		logger.Log.Info("(DeleteProduct:Prepare)" + err.Error())
-		return err
-	}
-
-	defer stmt.Close()
-
-	_, err = stmt.Exec(id)
-
-	if err != nil {
-		logger.Log.Info("(DeleteProduct:Physical:Exec)" + err.Error())
-
-		stmt, err = pr.db.Prepare(
-			"update products " +
-				"set deleted = true, " +
-				"date_updated = now() " +
-				"where id = $1")
-
-		if err != nil {
-			logger.Log.Info("(DeteleProduct:Logic:Prepare)" + err.Error())
-			return err
-		}
-
-		_, err = stmt.Exec(id)
-
-		if err != nil {
-			logger.Log.Info("(DeleteProduct:Logic:Exec)" + err.Error())
-			return err
-		}
-
-	}
-
-	return nil
 }
 
 // Update modify the data for the specified product
@@ -169,21 +110,8 @@ func (pr *ProductRepositoryDB) Update(product *domain.Products) (domain.Products
 		return domain.Products{}, err
 	}
 
-	stmt, err := pr.db.Prepare(
-		"update products " +
-			"set name = $1, " +
-			"unit = $2, " +
-			"date_updated = now() " +
-			"where id = $3")
-
-	if err != nil {
-		logger.Log.Info("(UpdateProduct:Prepare)" + err.Error())
-		return domain.Products{}, err
-	}
-
-	defer stmt.Close()
-
-	_, err = stmt.Exec(product.Name, product.Unit, product.ID)
+	updateQuery := pr.app.SQLCache["products_update.sql"]
+	_, err = pr.db.Exec(updateQuery, product.Name, product.Unit, product.Audit.Deleted, product.ID)
 
 	if err != nil {
 		logger.Log.Info("(UpdateProduct:Exec)" + err.Error())
@@ -191,5 +119,31 @@ func (pr *ProductRepositoryDB) Update(product *domain.Products) (domain.Products
 	}
 
 	return *product, nil
+}
 
+// Delete removes the product with the specified login from the database
+func (pr *ProductRepositoryDB) Delete(id int64) error {
+
+	product, err := pr.Get(id)
+	if err != nil {
+		logger.Log.Info("(DeleteProduct:Get) Product doesn't exist")
+		return err
+	}
+
+	deleteQuery := pr.app.SQLCache["products_delete.sql"]
+	_, err = pr.db.Exec(deleteQuery, id)
+
+	if err != nil {
+		logger.Log.Info("(DeleteProduct:Physical:Exec) " + err.Error())
+
+		product.Audit.Deleted = true
+		_, err := pr.Update(&product)
+		if err != nil {
+			logger.Log.Info("(DeleteProduct:Logic:Exec) " + err.Error())
+			return err
+		}
+
+	}
+
+	return nil
 }
